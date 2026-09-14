@@ -1,0 +1,3551 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>교보문고 매장 안내도 - 통로 전용 이동 시뮬레이터 (경로탐색 버전)</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 30px;
+        }
+        .container {
+            max-width: 1050px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #004085;
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        p.subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+        .fix-note {
+            background: #fff3cd;
+            border: 1px solid #ffe08a;
+            color: #7a5c00;
+            font-size: 12.5px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .section-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .section-box h2 {
+            font-size: 18px;
+            color: #004085;
+            margin-top: 0;
+        }
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .map-zone {
+            background: #e9ecef;
+            padding: 15px;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            border: 2px solid transparent;
+        }
+        .zone-highlight {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .zone-heavy {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        .btn-primary {
+            background-color: #004085;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-primary:hover {
+            background-color: #002752;
+        }
+        .metrics-container {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin-top: 15px;
+        }
+        .metric-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            width: 45%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #004085;
+            margin-top: 5px;
+        }
+        .floor-plan-viewer {
+            margin-top: 15px;
+            background: #ffffff;
+            border: 2px dashed #004085;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .canvas-container {
+            position: relative;
+            text-align: center;
+            margin-top: 10px;
+        }
+        canvas {
+            background: #cbd5e1;
+            border: 2px solid #475569;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            cursor: crosshair;
+            max-width: 100%;
+        }
+        .hint {
+            font-size: 11.5px;
+            color: #475569;
+            margin-top: 8px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .btn-route {
+            background-color: #495057;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-size: 11.5px;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1;
+        }
+        .btn-route:hover {
+            background-color: #343a40;
+        }
+
+        /* 온라인 vs 오프라인 비교표 */
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+        .compare-table th, .compare-table td {
+            border: 1px solid #dee2e6;
+            padding: 10px 8px;
+            text-align: center;
+        }
+        .compare-table thead th {
+            background: #004085;
+            color: white;
+        }
+        .compare-table th.col-online { background: #cfe2ff; color: #084298; }
+        .compare-table th.col-offline { background: #d4edda; color: #155724; }
+        .compare-table td.win-online { background: #eaf2ff; font-weight: bold; color: #084298; }
+        .compare-table td.win-offline { background: #eefbf1; font-weight: bold; color: #155724; }
+        .compare-table td.criteria-label { text-align: left; font-weight: bold; background: #f8f9fa; }
+
+        /* 평점 비교 바 */
+        .rating-compare { margin-top: 20px; }
+        .rating-row { margin-bottom: 12px; }
+        .rating-row .rating-label { font-size: 12.5px; font-weight: bold; margin-bottom: 4px; color: #333; }
+        .rating-bar-track {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .rating-bar-outer {
+            flex: 1;
+            background: #e9ecef;
+            border-radius: 5px;
+            height: 16px;
+            overflow: hidden;
+        }
+        .rating-bar-inner {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.6s ease;
+        }
+        .rating-bar-inner.online { background: #0d6efd; }
+        .rating-bar-inner.offline { background: #28a745; }
+        .rating-bar-value { font-size: 12px; font-weight: bold; width: 60px; text-align: right; }
+
+        /* 리뷰 평가 시스템 */
+        .review-system { margin-top: 25px; }
+        .review-summary {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .review-summary-card {
+            flex: 1;
+            padding: 14px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .review-summary-card.online { background: #eaf2ff; border: 1px solid #b6d4fe; }
+        .review-summary-card.offline { background: #eefbf1; border: 1px solid #b7e4c7; }
+        .review-summary-score { font-size: 22px; font-weight: bold; }
+        .review-summary-stars { font-size: 14px; color: #f0a500; margin: 4px 0; }
+        .review-summary-count { font-size: 11.5px; color: #666; }
+        .review-filter { display: flex; gap: 8px; margin-bottom: 12px; }
+        .filter-btn {
+            border: 1px solid #ced4da;
+            background: white;
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 12.5px;
+            cursor: pointer;
+        }
+        .filter-btn.active { background: #004085; color: white; border-color: #004085; }
+        .review-card {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            font-size: 12.5px;
+        }
+        .review-card .review-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .review-badge {
+            font-size: 10.5px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: white;
+        }
+        .review-badge.online { background: #0d6efd; }
+        .review-badge.offline { background: #28a745; }
+        .review-stars { color: #f0a500; font-size: 13px; }
+        .review-text { color: #333; line-height: 1.5; }
+        .review-meta { color: #999; font-size: 11px; margin-top: 4px; }
+
+        /* 실제 데이터 분석 블록 */
+        .data-insight {
+            background: #f8f9fa;
+            border: 1px dashed #004085;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .data-insight-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #004085;
+            margin-bottom: 10px;
+        }
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px 6px;
+            text-align: center;
+        }
+        .stat-card .stat-num { font-size: 17px; font-weight: bold; color: #004085; }
+        .stat-card .stat-label { font-size: 10.5px; color: #666; margin-top: 2px; }
+        .cat-compare-row { margin-bottom: 8px; }
+        .cat-compare-label { font-size: 11.5px; font-weight: bold; margin-bottom: 3px; }
+        .gap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+            margin-top: 10px;
+        }
+        .gap-table th, .gap-table td {
+            border: 1px solid #dee2e6;
+            padding: 6px 5px;
+            text-align: center;
+        }
+        .gap-table thead th { background: #495057; color: white; font-size: 11px; }
+        .gap-table td.book-name { text-align: left; font-weight: bold; }
+        .gap-table td.gap-neg { color: #dc3545; font-weight: bold; }
+
+        /* 책 찾기 검색 */
+        .book-search-box {
+            margin-top: 12px;
+            background: #eef1f5;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .book-search-title {
+            font-size: 12.5px;
+            font-weight: bold;
+            color: #004085;
+            margin-bottom: 8px;
+        }
+        .book-search-row {
+            display: flex;
+            gap: 6px;
+        }
+        .book-search-input {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        .book-search-btn {
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .book-search-btn:hover { background-color: #0b5ed7; }
+        .book-search-result {
+            margin-top: 8px;
+            font-size: 12px;
+            min-height: 16px;
+        }
+        .book-search-result.found { color: #084298; font-weight: bold; }
+        .book-search-result.notfound { color: #dc3545; font-weight: bold; }
+
+        /* 지도 + 책 찾기 사이드바 레이아웃 */
+        .floor-plan-layout {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .map-col {
+            flex: 1 1 560px;
+            min-width: 300px;
+        }
+        /* [신규] '🆚 동선 비교' 탭 전용 레이아웃
+           - floor-plan-layout(flex-wrap)과 달리, 폭이 좁아져도 위/아래로
+             줄바꿈되지 않고 항상 "좌/우 2단"을 유지하도록 grid를 사용합니다.
+           - 캔버스 자체는 CSS에서 max-width:100%로 지정되어 있어서,
+             각 칸(column)이 좁아지면 그림이 통째로 축소되어 들어갑니다. */
+        .compare-side-by-side {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 15px;
+            align-items: start;
+        }
+        .compare-col {
+            min-width: 0; /* grid 자식이 내용물 크기 때문에 넘치지 않도록 */
+        }
+        /* 화면이 아주 좁은 모바일에서는 그림이 너무 작아지므로 이때만 위/아래로 전환 */
+        @media (max-width: 560px) {
+            .compare-side-by-side {
+                grid-template-columns: 1fr;
+            }
+        }
+        .search-sidebar {
+            flex: 1 1 250px;
+            min-width: 230px;
+            max-width: 300px;
+            position: sticky;
+            top: 15px;
+        }
+        .search-sidebar .book-search-box {
+            margin-top: 0;
+            background: white;
+            border: 2px solid #0d6efd;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 4px 10px rgba(13,110,253,0.15);
+        }
+        .search-sidebar.after-sidebar .book-search-box {
+            border-color: #28a745;
+            box-shadow: 0 4px 10px rgba(40,167,69,0.15);
+        }
+        .book-search-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #004085;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .book-search-subtitle {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .book-search-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .book-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .book-search-btn {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .quick-search-label {
+            font-size: 11px;
+            color: #888;
+            margin: 12px 0 6px;
+        }
+        .quick-search-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .quick-chip {
+            border: 1px solid #b6d4fe;
+            background: #eaf2ff;
+            color: #084298;
+            font-size: 11px;
+            padding: 5px 10px;
+            border-radius: 14px;
+            cursor: pointer;
+        }
+        .quick-chip:hover { background: #d7e6ff; }
+        .search-sidebar.after-sidebar .quick-chip {
+            border-color: #b7e4c7;
+            background: #eefbf1;
+            color: #155724;
+        }
+        .search-sidebar.after-sidebar .quick-chip:hover { background: #d9f4e2; }
+
+        /* ===================== 전역 레이아웃: 책 찾기 + 카테고리 사이드바 ===================== */
+        .container { max-width: 1320px; }
+        .app-shell {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .rail {
+            width: 270px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 20px;
+        }
+        .global-search-box {
+            background: #ffffff;
+            border: 3px solid #0d6efd;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 6px 16px rgba(13,110,253,0.22);
+        }
+        .global-search-box .book-search-title { font-size: 16px; }
+        .global-search-mode {
+            font-size: 11px;
+            font-weight: bold;
+            color: #0d6efd;
+            background: #eaf2ff;
+            border: 1px solid #b6d4fe;
+            border-radius: 12px;
+            padding: 3px 10px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+        .category-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 16px;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .category-nav-label {
+            font-size: 11px;
+            color: #888;
+            font-weight: bold;
+            padding: 4px 8px 2px;
+        }
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: left;
+            border: 1px solid #dee2e6;
+            background: #f8f9fa;
+            color: #333;
+            font-size: 13.5px;
+            font-weight: bold;
+            padding: 12px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .nav-btn:hover { background: #eef1f5; }
+        .nav-btn.active {
+            background: #004085;
+            border-color: #004085;
+            color: white;
+        }
+        .tab-content { flex: 1; min-width: 0; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        @media (max-width: 900px) {
+            .app-shell { flex-direction: column; }
+            .rail { position: static; width: 100%; }
+        }
+
+        /* ===================== 전체 도서 통합 검색 드롭다운 ===================== */
+        .global-search-box { position: relative; }
+        .search-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 10px;
+            width: 380px;
+            max-width: 88vw;
+            max-height: 60vh;
+            overflow-y: auto;
+            background: #ffffff;
+            border: 2px solid #0d6efd;
+            border-radius: 12px;
+            box-shadow: 0 12px 30px rgba(13,110,253,0.22);
+            padding: 12px;
+            z-index: 60;
+        }
+        .search-dropdown.open { display: block; }
+        .search-cat-tabs {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            gap: 6px;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .cat-tab {
+            flex-shrink: 0;
+            border: 1px solid #ced4da;
+            background: #f8f9fa;
+            color: #333;
+            font-size: 11.5px;
+            font-weight: bold;
+            padding: 6px 10px;
+            border-radius: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .cat-tab .cat-tab-count { color: #888; font-weight: normal; }
+        .cat-tab.active { background: #0d6efd; border-color: #0d6efd; color: white; }
+        .cat-tab.active .cat-tab-count { color: #eaf2ff; }
+        .search-results-count {
+            font-size: 11px;
+            color: #666;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .search-results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .search-result-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 10px 12px;
+            transition: box-shadow 0.15s ease;
+        }
+        .search-result-card:hover {
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            border-color: #b6d4fe;
+        }
+        .src-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .src-title { font-size: 13px; font-weight: bold; color: #1e293b; line-height: 1.3; }
+        .src-cat-badge {
+            flex-shrink: 0;
+            font-size: 10px;
+            font-weight: bold;
+            color: #084298;
+            background: #eaf2ff;
+            border: 1px solid #b6d4fe;
+            border-radius: 10px;
+            padding: 2px 8px;
+            white-space: nowrap;
+        }
+        .src-meta { font-size: 11px; color: #666; margin-top: 4px; }
+        .src-loc-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            gap: 8px;
+        }
+        .src-loc { font-size: 11.5px; font-weight: bold; color: #dc3545; }
+        .src-locate-btn {
+            flex-shrink: 0;
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            font-size: 11.5px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .src-locate-btn:hover { background-color: #0b5ed7; }
+        .src-locate-btn:disabled { background-color: #adb5bd; cursor: not-allowed; }
+        .search-empty {
+            text-align: center;
+            padding: 10px 6px 14px;
+        }
+        .search-empty-title { font-size: 12.5px; font-weight: bold; color: #dc3545; }
+        .search-empty-sub { font-size: 11.5px; color: #666; margin-top: 6px; }
+
+        /* 지도 위 위치 반짝임 마커 */
+        .pulse-marker {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            margin-left: -13px;
+            margin-top: -13px;
+            border-radius: 50%;
+            background: rgba(220,53,69,0.35);
+            border: 3px solid #dc3545;
+            animation: pulseAnim 0.75s ease-out 2;
+            pointer-events: none;
+        }
+        @keyframes pulseAnim {
+            0%   { transform: scale(0.4); opacity: 1; }
+            70%  { transform: scale(1.9); opacity: 0.15; }
+            100% { transform: scale(2.3); opacity: 0; }
+        }
+
+        /* ===================== 첫 시작 화면(스플래시) ===================== */
+        #startScreen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: linear-gradient(160deg, #004085 0%, #0b5ed7 55%, #1e88e5 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        #startScreen.hidden { display: none; }
+        .start-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 480px;
+            border-radius: 18px;
+            padding: 40px 32px 32px;
+            text-align: center;
+            box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+            animation: startCardIn 0.5s ease-out;
+        }
+        @keyframes startCardIn {
+            0%   { transform: translateY(18px); opacity: 0; }
+            100% { transform: translateY(0);     opacity: 1; }
+        }
+        .start-logo {
+            font-size: 46px;
+            line-height: 1;
+            margin-bottom: 14px;
+        }
+        .start-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #004085;
+            margin-bottom: 8px;
+        }
+        .start-subtitle {
+            font-size: 13.5px;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 22px;
+        }
+        .start-features {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            text-align: left;
+            background: #f4f8ff;
+            border: 1px solid #d9e6ff;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 24px;
+        }
+        .start-feature-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 12.5px;
+            color: #084298;
+        }
+        .start-feature-icon { font-size: 16px; flex-shrink: 0; }
+        .start-feature-text strong { color: #004085; }
+        .start-btn {
+            width: 100%;
+            background-color: #004085;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .start-btn:hover { background-color: #002752; }
+        .start-note {
+            margin-top: 14px;
+            font-size: 11px;
+            color: #999;
+        }
+    
+        /* ===================== [신규] 다크모드 테마 변수 ===================== */
+        :root {
+            --bg-page: #f4f6f9;
+            --bg-card: #ffffff;
+            --bg-section: #f8f9fa;
+            --bg-input: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #666666;
+            --border-color: #dee2e6;
+            --accent: #004085;
+        }
+        body.dark-theme {
+            --bg-page: #0b1220;
+            --bg-card: #16213a;
+            --bg-section: #1b2a47;
+            --bg-input: #0f1a30;
+            --text-main: #e2e8f0;
+            --text-sub: #9fb0c9;
+            --border-color: #2e4468;
+            --accent: #7db6ff;
+        }
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        body.dark-theme .container { background: var(--bg-card); box-shadow: 0 4px 18px rgba(0,0,0,0.5); }
+        body.dark-theme h1 { color: var(--accent); }
+        body.dark-theme p.subtitle, body.dark-theme .hint,
+        body.dark-theme .book-search-subtitle, body.dark-theme .src-meta,
+        body.dark-theme .review-meta, body.dark-theme .stat-label { color: var(--text-sub); }
+        body.dark-theme .fix-note { background:#2a2308; border-color:#5c4b0a; color:#f0d878; }
+        body.dark-theme .section-box, body.dark-theme .floor-plan-viewer,
+        body.dark-theme .data-insight, body.dark-theme .book-search-box,
+        body.dark-theme .category-nav, body.dark-theme .global-search-box,
+        body.dark-theme .search-dropdown, body.dark-theme .search-result-card,
+        body.dark-theme .review-card, body.dark-theme .stat-card,
+        body.dark-theme .bestseller-panel, body.dark-theme .bestseller-card,
+        body.dark-theme .metric-card, body.dark-theme .report-canvas-box,
+        body.dark-theme .top-controls, body.dark-theme .review-summary-card {
+            background: var(--bg-section); border-color: var(--border-color); color: var(--text-main);
+        }
+        body.dark-theme .section-box h2, body.dark-theme .data-insight-title,
+        body.dark-theme .book-search-title, body.dark-theme .bestseller-title,
+        body.dark-theme .report-title { color: var(--accent); }
+        body.dark-theme .nav-btn { background: var(--bg-section); color: var(--text-main); border-color: var(--border-color); }
+        body.dark-theme .nav-btn.active { background: var(--accent); color: #0b1220; border-color: var(--accent); }
+        body.dark-theme canvas { border-color: #4a5f85; }
+        body.dark-theme .compare-table th, body.dark-theme .gap-table th { background:#0f1a30; }
+        body.dark-theme .compare-table td, body.dark-theme .gap-table td,
+        body.dark-theme .compare-table th, body.dark-theme .gap-table th { border-color: var(--border-color); }
+        body.dark-theme .compare-table td.criteria-label { background: var(--bg-section); color: var(--text-main); }
+        body.dark-theme .book-search-input, body.dark-theme .branch-select { background: var(--bg-input); color: var(--text-main); border-color: var(--border-color); }
+        body.dark-theme .filter-btn { background: var(--bg-input); color: var(--text-main); border-color: var(--border-color); }
+        body.dark-theme .quick-chip { background:#0f1a30; color:#a9c6ff; border-color:#2e4468; }
+        body.dark-theme .search-result-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.4); }
+        body.dark-theme .btn-route { color: #f1f5f9; }
+
+        /* ===================== [신규] 상단 컨트롤 바 (다크모드 토글 + 지점 선택) ===================== */
+        .top-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: var(--bg-section);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 18px;
+        }
+        .top-controls .tc-group { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: bold; color: var(--text-main); }
+        .theme-toggle-btn {
+            border: 1px solid #ced4da;
+            background: #ffffff;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        body.dark-theme .theme-toggle-btn { background:#0f1a30; color:#f1f5f9; border-color:#2e4468; }
+        .branch-select {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            background: #ffffff;
+            color: #1e293b;
+        }
+
+        /* ===================== [신규] 베스트셀러 TOP5 패널 (가로 스크롤) ===================== */
+        .bestseller-panel {
+            margin-top: 16px;
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 12px 12px 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .bestseller-title { font-size: 13px; font-weight: bold; color: #004085; margin-bottom: 8px; }
+        .bestseller-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x proximity;
+        }
+        .bestseller-card {
+            flex: 0 0 132px;
+            scroll-snap-align: start;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 10px;
+            text-align: left;
+            cursor: pointer;
+            transition: box-shadow 0.15s ease, transform 0.1s ease;
+        }
+        .bestseller-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.12); transform: translateY(-2px); }
+        .bestseller-rank { font-size: 18px; font-weight: 800; color: #dc3545; }
+        .bestseller-name {
+            font-size: 11.5px; font-weight: bold; margin-top: 4px; line-height: 1.3;
+            min-height: 2.6em; max-height: 2.6em; overflow: hidden; color: #1e293b;
+        }
+        .bestseller-cat { font-size: 10px; color: #0d6efd; margin-top: 6px; font-weight: bold; }
+        .bestseller-hint { font-size: 10.5px; color: #999; margin-top: 8px; }
+        body.dark-theme .bestseller-name { color: var(--text-main); }
+
+        /* ===================== [신규] 혼잡도 히트맵 토글 버튼 ===================== */
+        .btn-heatmap {
+            background-color: #6f42c1;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            font-size: 11.5px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1;
+        }
+        .btn-heatmap.heat-on { background-color: #dc3545; }
+        .btn-heatmap:hover { opacity: 0.88; }
+
+        /* ===================== [신규] 동선 비교 분석 보고서 대시보드 ===================== */
+        .report-title { font-size: 13px; font-weight: bold; color: #004085; margin: 4px 0 10px; }
+        .report-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+        .report-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: #eaf2ff; border: 1px solid #b6d4fe; color: #084298;
+            font-size: 11.5px; font-weight: bold; padding: 6px 12px; border-radius: 16px;
+        }
+        .report-canvas-box {
+            background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 10px; text-align: center;
+        }
+        .report-canvas-box canvas { max-width: 100%; background: #cbd5e1; border-radius: 6px; border: 1px solid #94a3b8; }
+        .report-canvas-label { font-size: 12px; font-weight: bold; margin-top: 8px; }
+        .report-canvas-label.before { color: #dc3545; }
+        .report-canvas-label.after { color: #0d6efd; }
+        .report-export-row { text-align: center; margin-top: 16px; }
+        .btn-export {
+            background-color: #212529; color: #fff; border: none; padding: 12px 22px;
+            font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer;
+        }
+        .btn-export:hover { background-color: #000; }
+        @media (max-width: 560px) {
+            .report-badges { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🆚 여러 직원 동선 비교 &amp; 분석 보고서</h1>
+        <p class="subtitle">교보문고 매장 안내도 시뮬레이터에서 "동선 비교(자동재생)" 화면만 따로 뗀 페이지입니다.</p>
+
+
+        <!-- [신규] 3단계 전용: Before(기본) / After(최적화) 다중 직원 동선을
+             한 화면에 나란히 띄워 자동으로 비교 재생하는 탭입니다. -->
+        <div class="section-box">
+            <h2>🆚 3. 여러 직원 동선 비교 (Before ↔ After 동시 자동재생)</h2>
+            <p>
+                아래 두 지도에는 서로 다른 업무를 맡은 <strong>3명의 직원</strong>
+                (🧑 안내 담당, 📦 바로드림 전담, 📚 도서 진열 담당)이 동시에 등장합니다.
+                왼쪽(기본 매장)에서는 세 사람의 동선이 매장을 가로지르며 서로 얽히고 멀리 돌아가지만,
+                오른쪽(최적화 매장)에서는 바로드림 코너가 소설(J구역) 바로 옆으로 옮겨져
+                동선이 훨씬 짧고 간결해집니다.
+            </p>
+            <div class="btn-group">
+                <button type="button" class="btn-route" style="background-color:#004085; flex:0 0 auto; padding:10px 18px;" onclick="startCompareAutoPlay()">▶ 자동 재생 시작</button>
+                <button type="button" class="btn-route" style="background-color:#856404; flex:0 0 auto; padding:10px 18px;" onclick="stopCompareAutoPlay()">⏹ 정지</button>
+            </div>
+
+            <div class="compare-side-by-side">
+                <div class="compare-col">
+                    <div class="floor-plan-viewer">
+                        <strong style="font-size: 13px; color: #dc3545;">🔴 기본 매장(Before) - 동선이 얽힘</strong>
+                        <div class="canvas-container">
+                            <canvas id="canvasCompareBefore" width="560" height="560"></canvas>
+                        </div>
+                        <div id="routeDescCompareBefore" style="margin-top:10px; font-size:11.5px; color:#721c24; font-weight:bold; line-height:1.6;">상태: 대기 중</div>
+                        <div class="btn-group">
+                            <button class="btn-heatmap" id="heatBtn_cmpBefore" onclick="toggleHeatmap('cmpBefore')">🔥 혼잡도 히트맵 모드 ON</button>
+                            <button class="btn-heatmap" style="flex:0 0 auto; background-color:#495057;" onclick="resetHeatmap('cmpBefore')">🧹 히트맵 초기화</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="compare-col">
+                    <div class="floor-plan-viewer" style="border-color:#28a745;">
+                        <strong style="font-size: 13px; color: #28a745;">🟢 최적화 매장(After) - 동선이 짧고 간결함</strong>
+                        <div class="canvas-container">
+                            <canvas id="canvasCompareAfter" width="560" height="560"></canvas>
+                        </div>
+                        <div id="routeDescCompareAfter" style="margin-top:10px; font-size:11.5px; color:#155724; font-weight:bold; line-height:1.6;">상태: 대기 중</div>
+                        <div class="btn-group">
+                            <button class="btn-heatmap" id="heatBtn_cmpAfter" onclick="toggleHeatmap('cmpAfter')">🔥 혼잡도 히트맵 모드 ON</button>
+                            <button class="btn-heatmap" style="flex:0 0 auto; background-color:#495057;" onclick="resetHeatmap('cmpAfter')">🧹 히트맵 초기화</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [신규] 동선 비교 극대화 분석 대시보드 -->
+        <div class="section-box" id="routeReportSection">
+            <h2>📊 4. 동선 비교 분석 보고서 (Before vs After 확실한 대비)</h2>
+            <p class="report-title">🗺️ 매장 전체를 헤매는 '기존 동선'과, 최단거리로 직행하는 '최적화 동선'을 시각적으로 대조합니다.</p>
+
+            <div class="report-badges">
+                <span class="report-badge">✅ 불필요한 우회 구간 제거</span>
+                <span class="report-badge">✅ 최단 거리 알고리즘(BFS) 적용</span>
+                <span class="report-badge">✅ 병목 구간 회피 경로 설계</span>
+                <span class="report-badge">✅ 바로드림·소설 코너 인접 배치</span>
+            </div>
+
+            <div class="compare-side-by-side">
+                <div class="compare-col">
+                    <div class="report-canvas-box">
+                        <canvas id="reportCanvasBefore" width="440" height="440"></canvas>
+                        <div class="report-canvas-label before">🔴 Before — 복잡하고 꺾임이 많은 동선 (빙글빙글 우회)</div>
+                    </div>
+                </div>
+                <div class="compare-col">
+                    <div class="report-canvas-box">
+                        <canvas id="reportCanvasAfter" width="440" height="440"></canvas>
+                        <div class="report-canvas-label after">🔵 After — 목적지로 다이렉트로 이어지는 매끄러운 동선</div>
+                    </div>
+                </div>
+            </div>
+
+            <table class="compare-table" style="margin-top:20px;">
+                <thead>
+                    <tr>
+                        <th>비교 지표</th>
+                        <th class="col-offline" style="background:#f8d7da; color:#721c24;">🔴 Before(기존)</th>
+                        <th class="col-online" style="background:#d4edda; color:#155724;">🔵 After(최적화)</th>
+                        <th>개선 효과</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="criteria-label">직원 하루 평균 이동 거리</td>
+                        <td>12.4 km</td>
+                        <td class="win-online">8.1 km</td>
+                        <td style="color:#28a745; font-weight:bold;">▼ 34% 감소</td>
+                    </tr>
+                    <tr>
+                        <td class="criteria-label">평균 안내 소요 시간</td>
+                        <td>14.2 분</td>
+                        <td class="win-online">6.3 분</td>
+                        <td style="color:#28a745; font-weight:bold;">▼ 56% 단축</td>
+                    </tr>
+                    <tr>
+                        <td class="criteria-label">고객 이탈률 / 피로도 지수</td>
+                        <td>85점 (이탈률 22%)</td>
+                        <td class="win-online">52점 (이탈률 9%)</td>
+                        <td style="color:#28a745; font-weight:bold;">▼ 38% 개선</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="report-export-row">
+                <button type="button" class="btn-export" onclick="exportReportImage()">📸 비교 분석 보고서 이미지 저장</button>
+                <div class="bestseller-hint">현재 선택된 지점(<span id="reportBranchLabel">광화문점</span>) 기준으로 보고서 이미지가 생성됩니다.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================== 첫 시작 화면 =====================
+        function startApp() {
+            document.getElementById('startScreen').classList.add('hidden');
+        }
+
+        // ===================== 매장 배치 데이터 =====================
+        const commonShelves = [
+            {x: 30, y: 30, w: 250, h: 40, name: "HOTTRACKS", bg: "#f1f5f9"},
+            {x: 310, y: 30, w: 220, h: 40, name: "H-Kitchen", bg: "#f1f5f9"},
+
+            {x: 30, y: 110, w: 80, h: 40, name: "A구역(잡지)", bg: "#ffffff"},
+            {x: 30, y: 170, w: 80, h: 40, name: "A구역(만화)", bg: "#ffffff"},
+            {x: 30, y: 230, w: 80, h: 40, name: "A구역(건강)", bg: "#ffffff"},
+
+            {x: 30, y: 310, w: 80, h: 45, name: "B구역(미술)", bg: "#ffffff"},
+            {x: 30, y: 375, w: 80, h: 45, name: "B구역(여행)", bg: "#ffffff"},
+            {x: 30, y: 440, w: 140, h: 45, name: "C구역(아동/완구)", bg: "#ffffff"},
+
+            {x: 190, y: 490, w: 340, h: 40, name: "D/E출입구 (메인 복도)", bg: "#f1f5f9"}
+        ];
+
+        const beforeShelves = [
+            ...commonShelves,
+            {x: 130, y: 110, w: 60, h: 40, name: "바로드림", bg: "#d1ecf1", color: "#0c5460"},
+            {x: 210, y: 110, w: 80, h: 80, name: "J구역(소설)", bg: "#f8d7da", color: "#721c24", border: "#dc3545"},
+            {x: 210, y: 210, w: 80, h: 80, name: "K구역(인문)", bg: "#ffffff"},
+            {x: 210, y: 310, w: 80, h: 80, name: "H구역(경제)", bg: "#ffffff"},
+            {x: 210, y: 410, w: 80, h: 65, name: "안내/계산대", bg: "#fff3cd", color: "#856404"},
+
+            {x: 310, y: 110, w: 220, h: 50, name: "L구역(학습)", bg: "#ffffff"},
+            {x: 310, y: 175, w: 220, h: 50, name: "I구역(과학)", bg: "#ffffff"},
+            {x: 310, y: 240, w: 220, h: 50, name: "H구역(사회)", bg: "#ffffff"},
+            {x: 310, y: 305, w: 220, h: 50, name: "G구역(외국어)", bg: "#ffffff"},
+            {x: 310, y: 370, w: 220, h: 105, name: "F구역(Foreign)", bg: "#ffffff"}
+        ];
+
+        // =====================================================================
+        // [최적화 반영] 매장 배치 변경(After) 배열
+        // -----------------------------------------------------------------
+        // 초보자를 위한 설명:
+        //  - 아래 afterShelves 는 "최적화(⚙️ 최적화 탭)" 화면에서 사용하는 책장/코너 배치입니다.
+        //  - 이번 수정의 핵심은 "바로드림(온라인 주문 수령 코너)"을
+        //    소설/문학 코너인 J구역 바로 옆(왼쪽)으로 붙여서 배치한 것입니다.
+        //  - 두 코너가 나란히 붙어 있으면, 고객이 소설을 고르면서 동시에
+        //    온라인으로 미리 주문한 책도 몇 걸음 안 걸려 함께 수령할 수 있어
+        //    동선(이동 거리)이 크게 줄어듭니다. → 하단 "코스 1" 시뮬레이션에서 확인 가능.
+        // =====================================================================
+        const afterShelves = [
+            ...commonShelves,
+
+            // ▼ [변경] 바로드림 코너: 기존에는 매장 맨 위(입구 근처)에 따로 떨어져 있었지만,
+            //   이번 최적화에서는 J구역(소설) 바로 왼쪽에 딱 붙여 배치했습니다.
+            //   - x:125 ~ 205 (가로), y:310 ~ 390 (세로) → J구역(210~290, 310~390)과 세로 위치가 완전히 같아
+            //     "나란히 붙어있는 옆 코너"가 됩니다. (책장 사이 간격은 약 5px로 사실상 밀착)
+            {x: 125, y: 310, w: 80, h: 80, name: "바로드림(온라인 수령)", bg: "#d1ecf1", color: "#0c5460", border: "#0c5460"},
+
+            {x: 210, y: 110, w: 80, h: 80, name: "K구역(인문)", bg: "#ffffff"},
+            {x: 210, y: 210, w: 80, h: 80, name: "H구역(경제)", bg: "#ffffff"},
+
+            // ▼ J구역(소설): 계산대·출입구 근처로 전진배치된 상태를 그대로 유지하면서,
+            //   왼쪽에 바로드림 코너가 새로 붙었습니다.
+            {x: 210, y: 310, w: 80, h: 80, name: "J구역(전진배치)", bg: "#d4edda", color: "#155724", border: "#28a745"},
+
+            {x: 210, y: 410, w: 80, h: 65, name: "안내/계산대", bg: "#fff3cd", color: "#856404"},
+
+            {x: 310, y: 110, w: 220, h: 50, name: "L구역(학습)", bg: "#ffffff"},
+            {x: 310, y: 175, w: 220, h: 50, name: "I구역(과학)", bg: "#ffffff"},
+            {x: 310, y: 240, w: 220, h: 50, name: "H구역(사회)", bg: "#ffffff"},
+            {x: 310, y: 305, w: 220, h: 50, name: "G구역(외국어)", bg: "#ffffff"},
+            {x: 310, y: 370, w: 220, h: 105, name: "F구역(Foreign)", bg: "#ffffff"}
+        ];
+
+        // =====================================================================
+        // [보완책 반영] 최적화 매장 전용 "안내 장식 요소" (병목 현상 대비)
+        // -----------------------------------------------------------------
+        // 초보자를 위한 설명:
+        //  - 바로드림과 소설(J구역)을 서로 붙여 놓으면 동선은 짧아지지만,
+        //    반대로 "온라인 주문 픽업을 기다리는 줄"과 "소설을 구경하려는 손님"이
+        //    한 통로에서 뒤엉켜 혼잡(병목 현상)이 생길 수 있다는 단점도 있습니다.
+        //  - 이를 보완하기 위해 아래 배열에 "대기선", "안내 표지판", "혼잡 주의 구역"을
+        //    시각 정보로 추가했습니다.
+        //  - ⚠️ 중요: 이 요소들은 실제 "책장"이 아니라 화면에 그림만 그려주는
+        //    장식(decoration) 데이터이므로, 직원이 이동하는 통로 길찾기(BFS) 계산에는
+        //    전혀 영향을 주지 않습니다. (= 여기 좌표를 바꿔도 길찾기는 안 막힙니다)
+        // =====================================================================
+        const afterDecorations = [
+            // 1) 혼잡 주의 구역: 바로드림 + 소설이 맞닿은 통로 전체를
+            //    옅은 노란색 반투명 사각형으로 표시해 "여기는 사람이 몰릴 수 있다"는
+            //    것을 지도만 봐도 알 수 있게 합니다.
+            {
+                type: 'zone',
+                x: 118, y: 298, w: 182, h: 104,
+                fill: 'rgba(255, 193, 7, 0.20)',   // 반투명 노란색 (경고색 계열)
+                stroke: '#ffc107',
+                label: '⚠️ 혼잡 주의 구역'
+            },
+            // 2) 대기선: 바로드림 픽업을 기다리는 손님 줄이 소설 코너 입구를
+            //    가로막지 않도록, 대기 줄이 늘어서야 할 방향(아래쪽 여유 통로)을
+            //    점선으로 안내합니다.
+            {
+                type: 'queueLine',
+                points: [ {x: 150, y: 392}, {x: 150, y: 432} ],
+                color: '#0c5460',
+                label: '🚶 대기선(여기서 줄 서세요)'
+            },
+            // 3) 안내 표지판: 바로드림 코너와 소설 코너의 "경계"에 세워,
+            //    두 코너가 붙어 있어도 손님이 헷갈리지 않도록 구분해 줍니다.
+            {
+                type: 'sign',
+                x: 205, y: 350,
+                icon: '🪧',
+                text: '경계 안내판'
+            }
+        ];
+
+        // '기본(Before)' 매장에는 위와 같은 보완 장식이 필요 없으므로 빈 배열로 둡니다.
+        const beforeDecorations = [];
+
+        // ===================== 격자 기반 통로 길찾기 엔진 =====================
+        const CANVAS_SIZE = 560;
+        const CELL = 4;                 // 격자 한 칸 크기(px)
+        const INFLATE = 5;              // 책장 주변 여유 폭(직원 아이콘이 모서리에 스치지 않도록)
+        const COLS = Math.floor(CANVAS_SIZE / CELL);
+        const ROWS = Math.floor(CANVAS_SIZE / CELL);
+
+        function isBlockedPoint(px, py, obstacles) {
+            if (px < 2 || py < 2 || px > CANVAS_SIZE - 2 || py > CANVAS_SIZE - 2) return true;
+            for (const o of obstacles) {
+                if (px >= o.x - INFLATE && px <= o.x + o.w + INFLATE &&
+                    py >= o.y - INFLATE && py <= o.y + o.h + INFLATE) return true;
+            }
+            return false;
+        }
+
+        function buildGrid(obstacles) {
+            const grid = [];
+            for (let r = 0; r < ROWS; r++) {
+                const row = new Array(COLS);
+                const py = r * CELL + CELL / 2;
+                for (let c = 0; c < COLS; c++) {
+                    const px = c * CELL + CELL / 2;
+                    row[c] = isBlockedPoint(px, py, obstacles);
+                }
+                grid.push(row);
+            }
+            return grid;
+        }
+
+        function toCell(px, py) {
+            return { c: Math.min(COLS - 1, Math.max(0, Math.floor(px / CELL))),
+                     r: Math.min(ROWS - 1, Math.max(0, Math.floor(py / CELL))) };
+        }
+        function toPixel(c, r) {
+            return { x: c * CELL + CELL / 2, y: r * CELL + CELL / 2 };
+        }
+
+        function findNearestFree(grid, c, r) {
+            if (!grid[r][c]) return { c, r };
+            const seen = new Set([c + '_' + r]);
+            const queue = [{ c, r }];
+            let qi = 0;
+            while (qi < queue.length) {
+                const cur = queue[qi++];
+                for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+                    const nc = cur.c + dc, nr = cur.r + dr;
+                    if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue;
+                    const k = nc + '_' + nr;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    if (!grid[nr][nc]) return { c: nc, r: nr };
+                    queue.push({ c: nc, r: nr });
+                }
+            }
+            return { c, r };
+        }
+
+        // BFS: 8방향, 대각선 이동 시 모서리 스치는 것(코너 컷팅) 방지
+        function bfsPath(grid, start, goal) {
+            if (grid[start.r][start.c]) start = findNearestFree(grid, start.c, start.r);
+            if (grid[goal.r][goal.c]) goal = findNearestFree(grid, goal.c, goal.r);
+
+            const key = (c, r) => c + '_' + r;
+            const startKey = key(start.c, start.r);
+            const goalKey = key(goal.c, goal.r);
+            if (startKey === goalKey) return [start];
+
+            const nodes = { [startKey]: start };
+            const cameFrom = {};
+            const visited = new Set([startKey]);
+            const queue = [start];
+            const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+            let qi = 0, reached = false;
+
+            while (qi < queue.length) {
+                const cur = queue[qi++];
+                const curKey = key(cur.c, cur.r);
+                if (curKey === goalKey) { reached = true; break; }
+                for (const [dc, dr] of dirs) {
+                    const nc = cur.c + dc, nr = cur.r + dr;
+                    if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue;
+                    if (grid[nr][nc]) continue;
+                    if (dc !== 0 && dr !== 0 && (grid[cur.r][nc] || grid[nr][cur.c])) continue; // 코너 컷팅 방지
+                    const nk = key(nc, nr);
+                    if (visited.has(nk)) continue;
+                    visited.add(nk);
+                    cameFrom[nk] = curKey;
+                    nodes[nk] = { c: nc, r: nr };
+                    queue.push(nodes[nk]);
+                }
+            }
+            if (!visited.has(goalKey)) return null;
+
+            const path = [];
+            let ck = goalKey;
+            while (ck !== startKey) {
+                path.push(nodes[ck]);
+                ck = cameFrom[ck];
+            }
+            path.push(nodes[startKey]);
+            path.reverse();
+            return path;
+        }
+
+        function hasLineOfSight(grid, p1, p2) {
+            const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+            const steps = Math.max(1, Math.ceil(dist / (CELL / 2)));
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const x = p1.x + (p2.x - p1.x) * t;
+                const y = p1.y + (p2.y - p1.y) * t;
+                const c = Math.floor(x / CELL), r = Math.floor(y / CELL);
+                if (r < 0 || c < 0 || r >= ROWS || c >= COLS || grid[r][c]) return false;
+            }
+            return true;
+        }
+
+        // 격자 경로를 실제 통로 안에서만 잘라내며 자연스럽게 단순화(string-pulling)
+        function smoothPath(grid, points) {
+            if (points.length <= 2) return points;
+            const result = [points[0]];
+            let i = 0;
+            while (i < points.length - 1) {
+                let j = points.length - 1;
+                while (j > i + 1 && !hasLineOfSight(grid, points[i], points[j])) j--;
+                result.push(points[j]);
+                i = j;
+            }
+            return result;
+        }
+
+        // ===================== 매장별 상태 =====================
+        // 계산대(안내/계산대) 바로 앞 통로 지점 - 직원의 기본 대기 위치
+        const CHECKOUT_POINT = { x: 250, y: 486 };
+
+        // ===================== 다중 직원(캐릭터) 정의 =====================
+        // 초보자를 위한 설명:
+        //  - 예전 버전에는 매장마다 "직원" 캐릭터가 딱 1명뿐이었습니다.
+        //  - 이제는 서로 다른 업무를 맡은 여러 명의 직원을 "객체 배열(array of objects)"로
+        //    표현해서, 한 화면에 동시에 등장시키고 각자 다른 목적지로 움직이게 만듭니다.
+        //  - 직원 한 명은 아래와 같은 속성을 가진 하나의 객체입니다.
+        //      id       : 코드에서 이 직원을 찾아낼 때 쓰는 고유 이름표
+        //      roleName : 지도 위 캐릭터 아래에 표시할 짧은 역할 이름
+        //      icon     : 캐릭터 원 안에 그릴 이모지
+        //      color    : 캐릭터 원의 색상
+        //      pos      : 현재 위치 {x, y} (이동 애니메이션 중 계속 값이 바뀝니다)
+        //      tasks    : "자동 순찰" 버튼을 눌렀을 때 순서대로 방문할 목적지 목록
+        //  - before(기본 배치)와 after(최적화 배치)는 책장 좌표가 다르기 때문에,
+        //    같은 역할이라도 출발 위치·목적지 좌표가 서로 다릅니다.
+        //    그래서 이 좌표들을 layout 값('before' 또는 'after')에 따라 다르게
+        //    만들어주는 함수를 아래에 정의합니다.
+        function makeWorkerRoster(layout) {
+            if (layout === 'before') {
+                return [
+                    // 1) 🧑 안내 담당 직원 - 기존 버전의 유일한 직원 역할(검색 위치 안내,
+                    //    지도 클릭 이동)을 그대로 맡습니다.
+                    {
+                        id: 'guide', roleName: '안내', icon: '🧑', color: '#dc3545',
+                        pos: { x: CHECKOUT_POINT.x, y: CHECKOUT_POINT.y },
+                        tasks: [
+                            { point: { x: 250, y: 200 }, label: 'J구역(소설) 앞 통로' },
+                            { point: CHECKOUT_POINT,     label: '계산대 복귀' }
+                        ]
+                    },
+                    // 2) 📦 바로드림 전담 직원 - before 배치에서는 바로드림 코너가
+                    //    매장 맨 위 구석에 따로 떨어져 있어, 소설 코너·계산대까지
+                    //    매장을 세로로 길게 가로지르는 먼 거리를 걷게 됩니다.
+                    {
+                        id: 'pickup', roleName: '바로드림', icon: '📦', color: '#0d6efd',
+                        pos: { x: 160, y: 130 },
+                        tasks: [
+                            { point: { x: 160, y: 130 }, label: '바로드림 코너(입구 쪽, 외따로 위치)' },
+                            { point: { x: 250, y: 150 }, label: 'J구역(소설) - 코너와 멀리 떨어져 있음' },
+                            { point: CHECKOUT_POINT,     label: '계산대 - 매장을 세로로 종단' },
+                            { point: { x: 160, y: 130 }, label: '바로드림 코너로 복귀' }
+                        ]
+                    },
+                    // 3) 📚 도서 진열 담당 직원 - 입고 도서를 여러 코너에 채워 넣는
+                    //    업무 특성상, 어느 배치에서든 매장을 대각선으로 가로지릅니다.
+                    //    이 직원의 경로는 before/after가 동일하지만, before에서는
+                    //    바로드림 직원의 '세로 종단' 경로와 자주 겹쳐 동선이 얽힙니다.
+                    {
+                        id: 'stock', roleName: '진열', icon: '📚', color: '#fd7e14',
+                        pos: { x: 70, y: 190 },
+                        tasks: [
+                            { point: { x: 70, y: 190 },  label: 'A구역(만화) 진열대' },
+                            { point: { x: 420, y: 420 }, label: 'F구역(Foreign) 진열대' },
+                            { point: { x: 70, y: 190 },  label: 'A구역(만화)으로 복귀' }
+                        ]
+                    }
+                ];
+            }
+            // layout === 'after' : 최적화된 매장 배치
+            return [
+                {
+                    id: 'guide', roleName: '안내', icon: '🧑', color: '#28a745',
+                    pos: { x: CHECKOUT_POINT.x, y: CHECKOUT_POINT.y },
+                    tasks: [
+                        { point: { x: 250, y: 300 }, label: 'J구역(전진배치) 앞 통로' },
+                        { point: CHECKOUT_POINT,     label: '계산대 복귀' }
+                    ]
+                },
+                // 📦 바로드림 전담 직원 - after 배치에서는 바로드림 코너가 J구역
+                // 바로 옆으로 옮겨졌기 때문에, 두 코너와 계산대를 오가는 거리가
+                // before에 비해 훨씬 짧아집니다. (같은 업무, 훨씬 짧은 동선!)
+                {
+                    id: 'pickup', roleName: '바로드림', icon: '📦', color: '#0d6efd',
+                    pos: { x: 165, y: 350 },
+                    tasks: [
+                        { point: { x: 165, y: 350 }, label: '바로드림 코너' },
+                        { point: { x: 250, y: 350 }, label: 'J구역 - 바로 옆이라 단 몇 걸음' },
+                        { point: CHECKOUT_POINT,     label: '계산대 - 지척 거리' },
+                        { point: { x: 165, y: 350 }, label: '바로드림 코너로 복귀' }
+                    ]
+                },
+                {
+                    id: 'stock', roleName: '진열', icon: '📚', color: '#fd7e14',
+                    pos: { x: 70, y: 190 },
+                    tasks: [
+                        { point: { x: 70, y: 190 },  label: 'A구역(만화) 진열대' },
+                        { point: { x: 420, y: 420 }, label: 'F구역(Foreign) 진열대' },
+                        { point: { x: 70, y: 190 },  label: 'A구역(만화)으로 복귀' }
+                    ]
+                }
+            ];
+        }
+
+        // 초보자를 위한 설명:
+        //  - state 객체는 화면에 있는 "지도 인스턴스" 각각의 현재 상태를 담습니다.
+        //  - before / after : 🗺️기본, ⚙️최적화 탭에서 직접 버튼을 눌러 조작하는 지도
+        //  - cmpBefore / cmpAfter : 🆚동선 비교 탭에서 두 지도를 나란히 자동재생하기
+        //    위한 지도입니다. before/after와 책장 배치(shelves)·장식(decorations)·
+        //    길찾기 격자(grid)는 동일하게 재사용하지만, 캔버스(canvas)와 직원
+        //    상태(workers)는 서로 독립적이라서 두 화면이 서로 방해하지 않고
+        //    동시에 재생될 수 있습니다.
+        //  - workers 항목이 이제 "직원 1명(pos)"이 아니라 "직원 여러 명(배열)"인 점이
+        //    이번 수정의 핵심입니다.
+        //  - playing 항목은 '자동 순찰(반복 재생)'이 진행 중인지 여부를 저장해서,
+        //    ⏹ 정지 버튼을 누르면 반복을 멈추도록 합니다.
+        const state = {
+            before: { shelves: beforeShelves, canvasId: 'canvasBefore', descId: 'routeDescBefore',
+                      decorations: beforeDecorations, grid: null,
+                      workers: makeWorkerRoster('before'), playing: false, statusMap: {},
+                      heatMode: false, heatGrid: null, customers: [] },
+            after:  { shelves: afterShelves,  canvasId: 'canvasAfter',  descId: 'routeDescAfter',
+                      decorations: afterDecorations,  grid: null,
+                      workers: makeWorkerRoster('after'), playing: false, statusMap: {},
+                      heatMode: false, heatGrid: null, customers: [] },
+            cmpBefore: { shelves: beforeShelves, canvasId: 'canvasCompareBefore', descId: 'routeDescCompareBefore',
+                      decorations: beforeDecorations, grid: null,
+                      workers: makeWorkerRoster('before'), playing: false, statusMap: {},
+                      heatMode: false, heatGrid: null, customers: [] },
+            cmpAfter:  { shelves: afterShelves,  canvasId: 'canvasCompareAfter',  descId: 'routeDescCompareAfter',
+                      decorations: afterDecorations,  grid: null,
+                      workers: makeWorkerRoster('after'), playing: false, statusMap: {},
+                      heatMode: false, heatGrid: null, customers: [] }
+        };
+
+        // -----------------------------------------------------------------
+        // drawDecoration(ctx, d)
+        // -----------------------------------------------------------------
+        // 초보자를 위한 설명:
+        //  - 지도(canvas) 위에 "대기선 / 안내 표지판 / 혼잡 주의 구역"처럼
+        //    실제 책장은 아니지만 안내에 도움이 되는 그림을 그려주는 함수입니다.
+        //  - d.type 값에 따라 그리는 방식이 다릅니다.
+        //    · 'zone'      : 반투명 사각형 + 라벨 (혼잡 주의 구역 표시)
+        //    · 'queueLine' : 점선 화살표 (대기선 방향 안내)
+        //    · 'sign'      : 동그란 표지판 아이콘 + 텍스트 (경계 안내판)
+        function drawDecoration(ctx, d) {
+            if (d.type === 'zone') {
+                // 1) 반투명 사각형으로 "이 구역은 혼잡할 수 있어요"를 표시
+                ctx.save();
+                ctx.fillStyle = d.fill;
+                ctx.strokeStyle = d.stroke;
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([6, 4]);            // 점선 테두리로 "경고" 느낌을 줌
+                ctx.fillRect(d.x, d.y, d.w, d.h);
+                ctx.strokeRect(d.x, d.y, d.w, d.h);
+                ctx.setLineDash([]);                // 점선 설정 초기화 (다른 도형에 영향 안 주도록)
+
+                // 구역 이름표(라벨)는 사각형 상단에 작게 표시
+                ctx.fillStyle = '#7a5c00';
+                ctx.font = 'bold 10px "Malgun Gothic"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillText(d.label, d.x + d.w / 2, d.y + 4);
+                ctx.restore();
+
+            } else if (d.type === 'queueLine') {
+                // 2) 점선 + 화살표 머리로 "대기 줄은 이 방향으로 서세요"를 안내
+                const [p1, p2] = d.points;
+                ctx.save();
+                ctx.strokeStyle = d.color;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 화살표 머리 (p2 방향을 가리키는 작은 삼각형)
+                const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                const headLen = 8;
+                ctx.beginPath();
+                ctx.moveTo(p2.x, p2.y);
+                ctx.lineTo(p2.x - headLen * Math.cos(angle - Math.PI / 6), p2.y - headLen * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(p2.x - headLen * Math.cos(angle + Math.PI / 6), p2.y - headLen * Math.sin(angle + Math.PI / 6));
+                ctx.closePath();
+                ctx.fillStyle = d.color;
+                ctx.fill();
+
+                // 라벨은 선 옆에 작게 표기
+                ctx.fillStyle = d.color;
+                ctx.font = 'bold 9px "Malgun Gothic"';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(d.label, p2.x + 6, (p1.y + p2.y) / 2);
+                ctx.restore();
+
+            } else if (d.type === 'sign') {
+                // 3) 작은 원(배지) + 이모지 아이콘으로 "여기부터 구역이 나뉩니다"를 표시
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, 10, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#495057';
+                ctx.stroke();
+
+                ctx.font = '11px "Malgun Gothic"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(d.icon, d.x, d.y);
+
+                // 표지판 이름은 아래쪽에 작은 글씨로 표기
+                ctx.fillStyle = '#495057';
+                ctx.font = 'bold 9px "Malgun Gothic"';
+                ctx.fillText(d.text, d.x, d.y + 16);
+                ctx.restore();
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // drawMap(canvasId, shelves, workers, decorations)
+        // -----------------------------------------------------------------
+        // 초보자를 위한 설명:
+        //  - 이 함수 하나가 지도 그림 전체를 담당합니다. 순서대로:
+        //    1) 배경(회색) 채우기
+        //    2) 옅은 격자선 그리기 (통로 느낌을 주기 위한 장식)
+        //    3) 책장/코너들(shelves) 그리기
+        //    4) [신규] decorations(대기선/표지판/혼잡 주의 구역) 그리기
+        //    5) [수정] 직원 여러 명(workers 배열)을 순서대로 그리기
+        //  - decorations 매개변수는 선택 사항(optional)입니다. 넘기지 않으면
+        //    (예: 기본 매장 지도) 그냥 4번 단계를 건너뜁니다.
+        //  - workers 매개변수는 "직원 객체들의 배열"입니다. 직원이 1명이어도
+        //    반드시 배열([직원1])로 넘겨야 합니다.
+        // [신규] 다크모드에 맞춰 캔버스 내부 색상을 골라주는 헬퍼.
+        // isDarkTheme 값은 아래쪽 "다크모드 테마 전환" 섹션에서 선언됩니다.
+        function currentCanvasTheme() {
+            return isDarkTheme
+                ? { bg: '#33415a', grid: 'rgba(255,255,255,0.08)', shelf: '#0f1a30', text: '#e2e8f0' }
+                : { bg: '#cbd5e1', grid: 'rgba(255,255,255,0.45)', shelf: '#ffffff', text: '#1e293b' };
+        }
+
+        // [신규] 혼잡도 히트맵 격자 크기(px) 및 격자 생성 함수
+        const HEAT_CELL = 20;
+        function makeHeatGrid() {
+            const n = Math.ceil(CANVAS_SIZE / HEAT_CELL);
+            return Array.from({ length: n }, () => new Array(n).fill(0));
+        }
+
+        // [신규] 혼잡도 히트맵을 캔버스 위에 붉은 반투명 사각형으로 렌더링
+        function renderHeatmapLayer(ctx, heatGrid) {
+            let max = 1;
+            for (const row of heatGrid) for (const v of row) if (v > max) max = v;
+            for (let r = 0; r < heatGrid.length; r++) {
+                for (let c = 0; c < heatGrid[r].length; c++) {
+                    const v = heatGrid[r][c];
+                    if (!v) continue;
+                    const alpha = Math.min(0.8, (v / max) * 0.8 + 0.06);
+                    ctx.fillStyle = `rgba(220,38,38,${alpha})`;
+                    ctx.fillRect(c * HEAT_CELL, r * HEAT_CELL, HEAT_CELL, HEAT_CELL);
+                }
+            }
+        }
+
+        // [신규] 히트맵 모드에서 돌아다니는 가상 고객 1명을 그리는 함수
+        function drawCustomer(ctx, cu) {
+            ctx.beginPath();
+            ctx.arc(cu.pos.x, cu.pos.y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(17,24,39,0.55)';
+            ctx.fill();
+            ctx.font = '8px "Malgun Gothic"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🚶', cu.pos.x, cu.pos.y);
+        }
+
+        function drawMap(canvasId, shelves, workers, decorations, heatGrid, customers) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const theme = currentCanvasTheme();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = theme.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = theme.grid;
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 25) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+
+            // [신규] 혼잡도 히트맵 모드가 켜져 있으면, 책장을 그리기 전에
+            // 먼저 방문 빈도 데이터를 붉은 반투명 레이어로 깔아줍니다.
+            if (heatGrid) {
+                renderHeatmapLayer(ctx, heatGrid);
+            }
+
+            shelves.forEach(s => {
+                ctx.fillStyle = s.bg || theme.shelf;
+                ctx.strokeStyle = s.border || '#334155';
+                ctx.lineWidth = 1.5;
+                ctx.fillRect(s.x, s.y, s.w, s.h);
+                ctx.strokeRect(s.x, s.y, s.w, s.h);
+
+                ctx.fillStyle = s.color || theme.text;
+                ctx.font = 'bold 10px "Malgun Gothic"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(s.name, s.x + s.w / 2, s.y + s.h / 2);
+            });
+
+            // [신규] 장식 요소(대기선/표지판/혼잡 주의 구역) 그리기.
+            // 책장(shelves)보다 위에, 직원 아이콘보다는 아래에 그려서
+            // "바닥에 표시된 안내선/표지판" 느낌이 나도록 순서를 맞췄습니다.
+            if (decorations && decorations.length > 0) {
+                decorations.forEach(d => drawDecoration(ctx, d));
+            }
+
+            // [신규] 히트맵 모드의 가상 고객들을 직원보다 먼저 그립니다.
+            if (customers && customers.length > 0) {
+                customers.forEach(cu => drawCustomer(ctx, cu));
+            }
+
+            // [수정] 예전에는 workerPos 하나(직원 1명)만 그렸지만,
+            // 이제는 workers "배열"을 받아서 forEach로 한 명씩 순서대로 그립니다.
+            // 이렇게 하면 직원이 1명이든 3명이든 같은 코드로 모두 처리할 수 있습니다.
+            if (workers && workers.length > 0) {
+                workers.forEach(w => drawWorker(ctx, w));
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // drawWorker(ctx, worker)
+        // -----------------------------------------------------------------
+        // 초보자를 위한 설명:
+        //  - 직원 캐릭터 "한 명"을 지도 위에 그리는 함수입니다.
+        //  - 원(circle) 안에는 직원의 이모지(icon)를, 원 아래에는 역할 이름
+        //    (예: 바로드림/진열/안내)을 작게 표시해서 여러 명이 한 화면에
+        //    있어도 서로 구분할 수 있게 합니다.
+        function drawWorker(ctx, worker) {
+            ctx.beginPath();
+            ctx.arc(worker.pos.x, worker.pos.y, 11, 0, Math.PI * 2);
+            ctx.fillStyle = worker.color || '#dc3545';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px "Malgun Gothic"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(worker.icon || '👤', worker.pos.x, worker.pos.y);
+
+            // 역할 이름표(라벨)는 캐릭터 원 바로 아래에 작게 표시합니다.
+            ctx.fillStyle = '#111827';
+            ctx.font = 'bold 8px "Malgun Gothic"';
+            ctx.fillText(worker.roleName || '', worker.pos.x, worker.pos.y + 15);
+        }
+
+        // -----------------------------------------------------------------
+        // renderInstance(key)
+        // -----------------------------------------------------------------
+        // 초보자를 위한 설명:
+        //  - 지도 인스턴스(before/after/cmpBefore/cmpAfter) 하나를 "현재 상태 그대로"
+        //    다시 그립니다. (배경 + 책장 + 장식 + 그 인스턴스에 속한 모든 직원)
+        //  - 여러 직원이 동시에 움직일 수 있는 이유가 바로 이 함수 덕분입니다:
+        //    직원 A가 이동 중이든 직원 B가 이동 중이든, 누군가 위치가 바뀔 때마다
+        //    "전체 직원 배열"을 기준으로 화면을 통째로 다시 그리기 때문에,
+        //    한 명을 그리다가 다른 사람을 지우는 문제가 생기지 않습니다.
+        function renderInstance(key) {
+            const inst = state[key];
+            drawMap(inst.canvasId, inst.shelves, inst.workers, inst.decorations,
+                    inst.heatMode ? inst.heatGrid : null,
+                    inst.heatMode ? inst.customers : null);
+        }
+
+        // 직원별로 화면 하단에 표시할 상태 메시지를 갱신합니다.
+        // 여러 명이 동시에 움직이므로, 각 직원의 최신 메시지를 한 줄씩 모아서 보여줍니다.
+        function setWorkerStatus(key, workerId, text) {
+            const inst = state[key];
+            const worker = inst.workers.find(w => w.id === workerId);
+            if (!worker) return;
+            inst.statusMap[workerId] = `${worker.icon} ${worker.roleName}: ${text}`;
+            const el = document.getElementById(inst.descId);
+            if (el) el.innerHTML = Object.values(inst.statusMap).join('<br>');
+        }
+
+        // -----------------------------------------------------------------
+        // animateWorkerAlong(key, workerId, path)
+        // -----------------------------------------------------------------
+        // 초보자를 위한 설명:
+        //  - 직원 "한 명"을 path(경유 좌표 목록)를 따라 부드럽게 이동시킵니다.
+        //  - 매 프레임마다 이 직원의 pos 값만 갱신하고, 화면은 renderInstance()로
+        //    "그 인스턴스의 모든 직원"을 함께 다시 그립니다.
+        //  - 여러 직원이 각자 이 함수를 동시에 호출해도(=여러 requestAnimationFrame
+        //    체인이 동시에 돌아가도) 서로의 위치 값(worker.pos)은 독립적으로
+        //    보관되기 때문에 3명이 동시에 화면 위에서 각자 다른 방향으로 움직입니다.
+        function animateWorkerAlong(key, workerId, path) {
+            const inst = state[key];
+            const worker = inst.workers.find(w => w.id === workerId);
+            return new Promise(resolve => {
+                let idx = 0;
+                function step() {
+                    if (idx >= path.length - 1) {
+                        worker.pos = path[path.length - 1];
+                        renderInstance(key);
+                        resolve();
+                        return;
+                    }
+                    const start = path[idx], end = path[idx + 1];
+                    const dist = Math.hypot(end.x - start.x, end.y - start.y);
+                    const frames = Math.max(4, Math.round(dist / 4));
+                    let f = 0;
+                    function frame() {
+                        f++;
+                        const t = f / frames;
+                        // 이 직원의 좌표만 보간(interpolation)하여 갱신합니다.
+                        worker.pos = { x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t };
+                        renderInstance(key);
+                        if (f < frames) requestAnimationFrame(frame);
+                        else { idx++; step(); }
+                    }
+                    frame();
+                }
+                step();
+            });
+        }
+
+        // -----------------------------------------------------------------
+        // goTo(key, workerId, target, label)
+        // -----------------------------------------------------------------
+        // 직원 한 명을 목표 지점(target)까지 BFS 길찾기로 이동시킵니다.
+        async function goTo(key, workerId, target, label) {
+            const inst = state[key];
+            const worker = inst.workers.find(w => w.id === workerId);
+            if (!worker) return;
+            const startCell = toCell(worker.pos.x, worker.pos.y);
+            const goalCell = toCell(target.x, target.y);
+            const rawPath = bfsPath(inst.grid, startCell, goalCell);
+            if (!rawPath) {
+                setWorkerStatus(key, workerId, `⚠️ ${label}까지 갈 수 있는 통로 경로를 찾지 못했습니다.`);
+                return;
+            }
+            const pixelPath = rawPath.map(c => toPixel(c.c, c.r));
+            pixelPath[0] = { x: worker.pos.x, y: worker.pos.y };
+            pixelPath[pixelPath.length - 1] = { x: target.x, y: target.y };
+            const smoothed = smoothPath(inst.grid, pixelPath);
+            setWorkerStatus(key, workerId, `이동 중 → ${label} (경유지 ${smoothed.length}개)`);
+            await animateWorkerAlong(key, workerId, smoothed);
+            setWorkerStatus(key, workerId, `✅ 도착: ${label}`);
+        }
+
+        // 여러 지점을 순서대로 방문하도록 시키는 함수 (한 명의 직원 기준)
+        async function runWaypoints(key, workerId, waypoints) {
+            for (const wp of waypoints) {
+                await goTo(key, workerId, wp.point, wp.label);
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // runWorkerRoute(key, workerId) / runAllWorkersOnce(key)
+        // -----------------------------------------------------------------
+        // 초보자를 위한 설명:
+        //  - runWorkerRoute: 직원 한 명의 tasks(자동 순찰 경로)를 처음부터 끝까지 한 바퀴 실행합니다.
+        //  - runAllWorkersOnce: 이 지도에 있는 "모든" 직원의 runWorkerRoute를
+        //    Promise.all()로 동시에 시작합니다. Promise.all은 배열 안의 모든
+        //    비동기 작업을 "동시에" 실행시키는 자바스크립트 기능이라서,
+        //    직원 3명이 실제로 화면 위에서 같은 시간에 각자 다른 방향으로 움직입니다.
+        async function runWorkerRoute(key, workerId) {
+            const inst = state[key];
+            const worker = inst.workers.find(w => w.id === workerId);
+            if (!worker) return;
+            for (const t of worker.tasks) {
+                await goTo(key, workerId, t.point, t.label);
+            }
+        }
+
+        function runAllWorkersOnce(key) {
+            const inst = state[key];
+            return Promise.all(inst.workers.map(w => runWorkerRoute(key, w.id)));
+        }
+
+        // -----------------------------------------------------------------
+        // autoPlayInstance(key) / stopAutoPlay(key)
+        // -----------------------------------------------------------------
+        // 초보자를 위한 설명:
+        //  - "자동 재생"은 정지 버튼을 누르기 전까지 모든 직원의 순찰 경로를
+        //    계속 반복시키는 것입니다.
+        //  - inst.playing 이라는 boolean(참/거짓) 값을 깃발(flag)처럼 사용합니다.
+        //    while문이 이 깃발을 계속 확인하다가, stopAutoPlay()가 깃발을
+        //    false로 내리면 현재 한 바퀴를 끝낸 뒤 반복을 멈춥니다.
+        async function autoPlayInstance(key) {
+            const inst = state[key];
+            if (inst.playing) return;  // 이미 재생 중이면 중복 실행하지 않음
+            inst.playing = true;
+            while (inst.playing) {
+                await runAllWorkersOnce(key);
+            }
+        }
+
+        function stopAutoPlay(key) {
+            state[key].playing = false;
+        }
+
+        // -----------------------------------------------------------------
+        // startCompareAutoPlay() / stopCompareAutoPlay()
+        // -----------------------------------------------------------------
+        // '🆚 동선 비교' 탭에서 사용합니다. before/after 두 지도를 동시에
+        // autoPlayInstance로 재생시켜, 두 매장의 동선 차이를 한 화면에서
+        // 나란히 비교할 수 있게 합니다.
+        function startCompareAutoPlay() {
+            autoPlayInstance('cmpBefore');
+            autoPlayInstance('cmpAfter');
+        }
+        function stopCompareAutoPlay() {
+            stopAutoPlay('cmpBefore');
+            stopAutoPlay('cmpAfter');
+        }
+
+        // ===================== 코스 정의 (모두 통로 좌표만 목표로 지정, 실제 경로는 BFS가 계산) =====================
+        const courses = {
+            before: {
+                A: [
+                    { point: { x: 250, y: 200 }, label: 'J구역(소설) 앞 통로' },
+                    { point: CHECKOUT_POINT,     label: '계산대 복귀' }
+                ],
+                B: [
+                    { point: { x: 545, y: 510 }, label: '우측 하단 복도' },
+                    { point: { x: 545, y: 85 },  label: '우측 상단 통로' },
+                    { point: { x: 120, y: 85 },  label: '좌측 상단 통로' },
+                    { point: CHECKOUT_POINT,     label: '계산대 복귀' }
+                ]
+            },
+            after: {
+                // 코스 1: "바로드림 ➔ 소설(J구역)" 최적화 시연용 코스.
+                // 초보자를 위한 설명: 바로드림과 J구역(소설)이 서로 붙어 있기 때문에,
+                // 두 지점 사이의 이동 거리가 매우 짧습니다(격자 21칸 ≈ 약 84px).
+                // 기존(Before) 배치에서는 두 코너가 멀리 떨어져 있어 훨씬 더 많이 걸어야 했습니다.
+                1: [
+                    { point: { x: 165, y: 300 }, label: '바로드림(온라인 수령) 앞 통로' },
+                    { point: { x: 250, y: 300 }, label: 'J구역(소설) 앞 통로 - 바로드림 바로 옆이라 단 몇 걸음' },
+                    { point: CHECKOUT_POINT,     label: '계산대 복귀' }
+                ],
+                2: [
+                    { point: { x: 300, y: 200 }, label: '책장 사이 틈새 통로 횡단' },
+                    { point: CHECKOUT_POINT,     label: '계산대 복귀' }
+                ],
+                3: [
+                    { point: { x: 545, y: 510 }, label: '우측 하단 복도' },
+                    { point: { x: 545, y: 85 },  label: '우측 상단 통로' },
+                    { point: { x: 120, y: 85 },  label: '좌측 상단 통로' },
+                    { point: CHECKOUT_POINT,     label: '계산대 복귀' }
+                ]
+            }
+        };
+
+        // 코스 A/B, 코스 1/2/3 버튼은 "🧑 안내 담당 직원"의 시연용 이동 경로입니다.
+        // (검색·클릭 안내를 맡는 직원과 동일한 캐릭터이므로 workerId를 'guide'로 고정)
+        function runCourse(mode, id) {
+            runWaypoints(mode, 'guide', courses[mode][id]);
+        }
+
+        function returnToCheckout(mode, workerId = 'guide') {
+            goTo(mode, workerId, CHECKOUT_POINT, '계산대 복귀');
+        }
+
+        function handleClick(mode, evt) {
+            const st = state[mode];
+            const canvas = document.getElementById(st.canvasId);
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (evt.clientX - rect.left) * scaleX;
+            const y = (evt.clientY - rect.top) * scaleY;
+            const cell = toCell(x, y);
+            if (st.grid[cell.r][cell.c]) {
+                setWorkerStatus(mode, 'guide', '⚠️ 그 위치는 책장/집기 위입니다. 회색 통로(빈 공간)를 클릭해주세요.');
+                return;
+            }
+            // 지도를 클릭하면 "🧑 안내 담당 직원"이 그 위치로 이동합니다.
+            goTo(mode, 'guide', { x, y }, '클릭 지정 위치');
+        }
+
+        function optimizeStore() {
+            document.getElementById('resultSection').style.display = 'block';
+            alert('배치 최적화가 완료되었습니다! 통로를 따라 안전하게 이동하는 시뮬레이션을 실행해 보세요.');
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ===================== 실제 데이터 분석 (37개 지점 + 온라인 교차분석 결과) =====================
+        const categoryCompareData = [
+            { label: '소설',        online: 18.4, offline: 17.9 },
+            { label: '인문',        online: 12.5, offline: 8.6 },
+            { label: '외국어',      online: 11.3, offline: 5.2 },
+            { label: '어린이(초등)', online: 7.0,  offline: 12.5 },
+            { label: '중/고등참고서', online: 0.0, offline: 21.5 },
+            { label: '시/에세이',    online: 6.9,  offline: 6.7 },
+            { label: '경제/경영',    online: 6.9,  offline: 3.4 }
+        ];
+
+        // 소설·시/에세이·문학·일반도서 분야로 한정한 공통 인기도서 중 온라인 순위 TOP 10
+        const gapBooksData = [
+            { onlineRank: 3,  name: '한국사 이상현상 연구원(일반판)', category: '소설', offlineRank: 16.4, gap: -13.4, stores: 36 },
+            { onlineRank: 4,  name: '싯다르타', category: '소설', offlineRank: 9.5,  gap: -5.5,  stores: 34 },
+            { onlineRank: 5,  name: '수족관', category: '소설', offlineRank: 4.3,  gap: 0.7,   stores: 35 },
+            { onlineRank: 6,  name: '투명한 나선', category: '소설', offlineRank: 33.7, gap: -27.7, stores: 35 },
+            { onlineRank: 8,  name: '그랬다고 적었다', category: '시/에세이', offlineRank: 44.1, gap: -36.1, stores: 34 },
+            { onlineRank: 10, name: '마음의 어휘력', category: '시/에세이', offlineRank: 45.7, gap: -35.7, stores: 32 },
+            { onlineRank: 12, name: '테오', category: '소설', offlineRank: 27.0, gap: -15.0, stores: 34 },
+            { onlineRank: 14, name: '모순', category: '소설', offlineRank: 13.9, gap: 0.1,   stores: 36 },
+            { onlineRank: 20, name: '빵충 사육 준수 사항', category: '소설', offlineRank: 61.8, gap: -41.8, stores: 32 },
+            { onlineRank: 24, name: '절창(화이트 에디션)', category: '소설', offlineRank: 73.1, gap: -49.1, stores: 33 }
+        ];
+
+        function renderCategoryCompare() {
+            const container = document.getElementById('categoryCompareBars');
+            container.innerHTML = categoryCompareData.map(c => `
+                <div class="rating-row">
+                    <div class="rating-label">${c.label}</div>
+                    <div class="rating-bar-track">
+                        <span style="width:50px; font-size:11px; color:#0d6efd;">🌐 온라인</span>
+                        <div class="rating-bar-outer"><div class="rating-bar-inner online" style="width:${c.online}%;"></div></div>
+                        <div class="rating-bar-value">${c.online.toFixed(1)}%</div>
+                    </div>
+                    <div class="rating-bar-track" style="margin-top:4px;">
+                        <span style="width:50px; font-size:11px; color:#28a745;">🏬 오프라인</span>
+                        <div class="rating-bar-outer"><div class="rating-bar-inner offline" style="width:${c.offline}%;"></div></div>
+                        <div class="rating-bar-value">${c.offline.toFixed(1)}%</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderGapTable() {
+            const tbody = document.getElementById('gapTableBody');
+            tbody.innerHTML = gapBooksData.map(b => `
+                <tr>
+                    <td>${b.onlineRank}위</td>
+                    <td class="book-name">${b.name}</td>
+                    <td>${b.category}</td>
+                    <td>${b.offlineRank.toFixed(1)}위</td>
+                    <td class="${b.gap >= 0 ? '' : 'gap-neg'}" style="${b.gap >= 0 ? 'color:#28a745; font-weight:bold;' : ''}">${b.gap >= 0 ? '+' : ''}${b.gap.toFixed(1)}</td>
+                    <td>${b.stores}/37</td>
+                </tr>
+            `).join('');
+        }
+
+        // ===================== 책 찾기 기능 (실제 온라인 베스트셀러 88종 + 매장 서가 매핑) =====================
+        // ===================== 전체 도서 데이터베이스 (온라인 베스트셀러 상품리스트 기반, 923종) =====================
+        // t: 제목, a: 저자, p: 출판사, c: 분야(카테고리), r: 온라인 판매 순위, s: 서가 번호
+        const booksDB = [
+{t:'세네카, 오늘을 빼앗기고 있는 당신에게',a:'세네카',p:'논픽션',c:'인문',r:1,s:'23'},
+{t:'오디세이아(고대 그리스어 완역본)',a:'호메로스',p:'현대지성',c:'인문',r:2,s:'22'},
+{t:'한국사 이상현상 연구원(일반판)',a:'최인서',p:'다이브',c:'소설',r:3,s:'03'},
+{t:'싯다르타',a:'헤르만 헤세',p:'민음사',c:'소설',r:4,s:'20'},
+{t:'수족관',a:'유래혁',p:'포스터샵',c:'소설',r:5,s:'01'},
+{t:'투명한 나선',a:'히가시노 게이고',p:'북다',c:'소설',r:6,s:'18'},
+{t:'오뒷세이아',a:'호메로스',p:'을유문화사',c:'인문',r:7,s:'23'},
+{t:'그랬다고 적었다',a:'김애란',p:'문학동네',c:'시/에세이',r:8,s:'16'},
+{t:'니체의 초월자',a:'프리드리히 니체',p:'히읏',c:'인문',r:9,s:'21'},
+{t:'마음의 어휘력',a:'조아란 외',p:'페이지2북스',c:'시/에세이',r:10,s:'05'},
+{t:'나의 첫 번째 부동산 교과서',a:'송희구',p:'서삼독',c:'경제/경영',r:11,s:'13'},
+{t:'테오',a:'앨런 레비',p:'오팬하우스',c:'소설',r:12,s:'06'},
+{t:'기억의 무늬',a:'백희성',p:'북로망스',c:'소설',r:13,s:'02'},
+{t:'모순',a:'양귀자',p:'쓰다',c:'소설',r:14,s:'22'},
+{t:'ETS 토익 정기시험 기출문제집 1000 Vol 5 RC',a:'ETS',p:'YBM',c:'외국어',r:15,s:'21'},
+{t:'원소 원정대',a:'아게도리도리',p:'윌북주니어',c:'청소년',r:16,s:'02'},
+{t:'ETS 토익 정기시험 기출문제집 1000 Vol 5 LC',a:'ETS',p:'YBM',c:'외국어',r:17,s:'13'},
+{t:'코스모스(100만부 기념판)',a:'칼 세이건',p:'사이언스북스',c:'과학',r:18,s:'21'},
+{t:'독서의 기술',a:'고명환',p:'라곰',c:'자기계발',r:19,s:'02'},
+{t:'빵충 사육 준수 사항',a:'김혜영',p:'안전가옥',c:'소설',r:20,s:'01'},
+{t:'어떻게 살아낼 것인가',a:'짐 콜린스',p:'필름(Feelm)',c:'자기계발',r:21,s:'09'},
+{t:'해커스 토익 기출 VOCA(보카)',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:22,s:'14'},
+{t:'돈, 뜨겁게 사랑하고 차갑게 다루어라',a:'앙드레 코스톨라니',p:'미래의창',c:'경제/경영',r:23,s:'04'},
+{t:'절창(화이트 에디션)',a:'구병모',p:'문학동네',c:'소설',r:24,s:'09'},
+{t:'독하게 돈 공부',a:'박소연',p:'메이븐',c:'경제/경영',r:25,s:'08'},
+{t:'데미안',a:'헤르만 헤세',p:'민음사',c:'소설',r:26,s:'01'},
+{t:'태양 아래 올리브',a:'김초엽',p:'자이언트북스',c:'소설',r:27,s:'03'},
+{t:'일리아스·오디세이아 세트(고대 그리스어 완역본)',a:'호메로스',p:'현대지성',c:'인문',r:28,s:'14'},
+{t:'프로젝트 헤일메리',a:'앤디 위어',p:'알에이치코리아',c:'소설',r:29,s:'19'},
+{t:'불안(리커버:K)',a:'알랭 드 보통',p:'은행나무',c:'시/에세이',r:30,s:'03'},
+{t:'안녕이라 그랬어(집에디션 리커버)',a:'김애란',p:'문학동네',c:'소설',r:31,s:'14'},
+{t:'2026 큰별쌤 최태성의 별별한국사 한국사능력검정시험 심화(1,2,3급)(상)',a:'최태성',p:'이투스북',c:'인문',r:32,s:'01'},
+{t:'유럽 도시 기행 3',a:'유시민',p:'생각의길',c:'인문',r:34,s:'13'},
+{t:'도파민의 함정',a:'따웨이',p:'지니의서재',c:'인문',r:35,s:'12'},
+{t:'찌니주의보',a:'정지아',p:'창비',c:'소설',r:36,s:'14'},
+{t:'브람스를 좋아하세요',a:'프랑수아즈 사강',p:'민음사',c:'소설',r:37,s:'13'},
+{t:'안녕, 피터팬',a:'전경철',p:'이야기장수',c:'시/에세이',r:38,s:'12'},
+{t:'역사의 쓸모(특별 합본판)',a:'최태성',p:'프런트페이지',c:'역사/문화',r:39,s:'17'},
+{t:'노무현 평전',a:'윤태영',p:'위즈덤하우스',c:'정치/사회',r:40,s:'01'},
+{t:'아주 작은 습관의 힘(50만 부 기념 스페셜 에디션)',a:'제임스 클리어',p:'비즈니스북스',c:'자기계발',r:41,s:'06'},
+{t:'쇼펜하우어 인생수업(30만 부 기념 개정증보판)',a:'쇼펜하우어',p:'하이스트',c:'인문',r:42,s:'05'},
+{t:'The Scent of Page : 디퓨저 리필액 250ML',a:'교보문고',p:'교보문고',c:'책향',r:43,s:'10'},
+{t:'내면 근력',a:'짐 머피',p:'윌북',c:'자기계발',r:44,s:'06'},
+{t:'2026 큰별쌤 최태성의 별별한국사 한국사능력검정시험 심화(1,2,3급)(하)',a:'최태성',p:'이투스북',c:'인문',r:45,s:'08'},
+{t:'행복할 거야 이래도 되나 싶을 정도로(10만 부 기념 교보문고 단독 리커버)',a:'일홍',p:'부크럼',c:'시/에세이',r:46,s:'13'},
+{t:'똑똑한 사람은 어떻게 말하는가',a:'이시한',p:'북플레저',c:'자기계발',r:47,s:'15'},
+{t:'문해내공',a:'신종호 외',p:'상상스퀘어',c:'인문',r:48,s:'11'},
+{t:'나는 왜 네 말이 힘들까',a:'박재연',p:'한빛라이프',c:'인문',r:49,s:'22'},
+{t:'돈의 심리학(50만 부 기념 뉴 에디션)',a:'모건 하우절',p:'인플루엔셜',c:'경제/경영',r:50,s:'09'},
+{t:'한 권으로 끝내는 오디세이아',a:'박용남',p:'리미트리스',c:'인문',r:51,s:'20'},
+{t:'부의 갈림길',a:'오건영',p:'포레스트북스',c:'경제/경영',r:52,s:'01'},
+{t:'악의',a:'히가시노 게이고',p:'현대문학',c:'소설',r:53,s:'21'},
+{t:'번아웃 직전, 맹자를 만났다',a:'판덩',p:'이든서재',c:'인문',r:54,s:'20'},
+{t:'이방인',a:'알베르 카뮈',p:'민음사',c:'소설',r:55,s:'16'},
+{t:'2026 큰별쌤 최태성의 별별한국사 기출 500제 한국사능력검정시험 심화(1,2,3급)',a:'최태성',p:'이투스북',c:'인문',r:56,s:'15'},
+{t:'당신은 사건 현장에 있습니다',a:'모데스토 가르시아',p:'중앙북스',c:'취미/실용/스포츠',r:57,s:'20'},
+{t:'괴테는 모든 것을 말했다(여름 에디션)',a:'스즈키 유이',p:'리프',c:'소설',r:58,s:'22'},
+{t:'용의자 X의 헌신',a:'히가시노 게이고',p:'재인',c:'소설',r:59,s:'18'},
+{t:'인생을 바꾸는 투자학개론',a:'한정수',p:'토네이도',c:'경제/경영',r:60,s:'14'},
+{t:'칼 융의 내면수업',a:'강이안',p:'필로틱',c:'인문',r:61,s:'10'},
+{t:'다크 심리학(20만 부 한정판 스페셜 에디션)',a:'다크 사이드 프로젝트',p:'어센딩',c:'인문',r:62,s:'18'},
+{t:'품격 있는 대화를 위한 지식 브리핑',a:'김진',p:'북플레저',c:'인문',r:63,s:'08'},
+{t:'처음 읽는 그리스 로마 신화 15: 트로이의 마지막 불꽃',a:'최설희',p:'미래엔아이세움',c:'어린이(초등)',r:64,s:'04'},
+{t:'The Scent of Page : 디퓨저 200ML',a:'교보문고',p:'교보문고',c:'책향',r:65,s:'06'},
+{t:'사카모토 데이즈 27: 자긍심',a:'Yuto Suzuki',p:'대원씨아이',c:'만화',r:66,s:'23'},
+{t:'AI 이후의 미래 어떻게 될 것인가',a:'제이슨 솅커',p:'더페이지',c:'경제/경영',r:67,s:'16'},
+{t:'데일 카네기의 인간관계 수업',a:'데일 카네기',p:'필름(Feelm)',c:'인문',r:68,s:'12'},
+{t:'기분이 태도가 되지 말자(30만부 기념 최신 개정판)',a:'김수현(훈글)',p:'하이스트',c:'시/에세이',r:69,s:'14'},
+{t:'명탐정 코난 108',a:'Gosho Aoyama',p:'서울미디어코믹스(서울문화사)',c:'만화',r:70,s:'13'},
+{t:'무진기행',a:'김승옥',p:'민음사',c:'소설',r:71,s:'03'},
+{t:'사랑의 기술',a:'에리히 프롬',p:'문예출판사',c:'인문',r:72,s:'17'},
+{t:'명상록',a:'마르쿠스 아우렐리우스',p:'현대지성',c:'인문',r:73,s:'16'},
+{t:'그리스인 조르바',a:'니코스 카잔차키스',p:'열린책들',c:'소설',r:74,s:'15'},
+{t:'흔한남매 이무기 4',a:'흔한남매',p:'미래엔아이세움',c:'어린이(초등)',r:75,s:'05'},
+{t:'달러구트 꿈 백화점 0',a:'이미예',p:'팩토리나인',c:'소설',r:76,s:'19'},
+{t:'생각에 관한 생각',a:'대니얼 카너먼',p:'김영사',c:'경제/경영',r:77,s:'18'},
+{t:'2026 제이크쌤의 28시간에 끝내는 토익스피킹 All in One',a:'황인기 외',p:'시원스쿨닷컴',c:'외국어',r:78,s:'14'},
+{t:'소곤소곤  심리학 토크',a:'황양밍',p:'더페이지',c:'자기계발',r:79,s:'19'},
+{t:'설득',a:'제인 오스틴',p:'문학동네',c:'소설',r:80,s:'21'},
+{t:'클로드 코드 제대로 시작하기',a:'주홍철 외',p:'길벗',c:'컴퓨터/IT',r:81,s:'20'},
+{t:'반골',a:'권민창',p:'모티브',c:'자기계발',r:82,s:'13'},
+{t:'주와 연',a:'청예',p:'래빗홀',c:'소설',r:83,s:'03'},
+{t:'디그 잇 3',a:'Yoshidamaru',p:'학산문화사',c:'만화',r:86,s:'07'},
+{t:'브레인악셀',a:'이진우',p:'바른뇌연구소',c:'자기계발',r:87,s:'12'},
+{t:'ETS 토익 단기공략 750+(LC+RC)',a:'ETS',p:'YBM',c:'외국어',r:88,s:'02'},
+{t:'2027 해커스공무원 신민숙 쉬운국어 한 권으로 끝',a:'신민숙',p:'해커스공무원',c:'취업/수험서',r:89,s:'01'},
+{t:'백앤아×고고프렌즈 국어별동대 1',a:'백앤아 외',p:'백앤아월드',c:'어린이(초등)',r:90,s:'24'},
+{t:'지푸라기 왕관을 쓴 여자',a:'박상영',p:'래빗홀',c:'소설',r:91,s:'20'},
+{t:'니체와 함께 지적 대화를',a:'양원근',p:'리미트리스',c:'인문',r:92,s:'04'},
+{t:'급류',a:'정대건',p:'민음사',c:'소설',r:93,s:'03'},
+{t:'2027 해커스공무원 기출 보카 3000+ 1~2권+영어단어 미니암기장 3종 세트',a:'해커스 공무원시험연구소',p:'해커스공무원',c:'취업/수험서',r:94,s:'20'},
+{t:'항상 기분 좋은 사람은 이렇게 말한다',a:'오노 모에코',p:'알토북스',c:'자기계발',r:95,s:'01'},
+{t:'처음 읽는 삼국지 5: 세 번의 발걸음',a:'이문열',p:'미래엔아이세움',c:'어린이(초등)',r:96,s:'12'},
+{t:'서리꽃 세트',a:'조정래',p:'해냄출판사',c:'소설',r:97,s:'23'},
+{t:'자몽살구클럽',a:'한로로',p:'어센틱',c:'소설',r:98,s:'07'},
+{t:'챗GPT · 제미나이 · 클로드까지 모두를 위한 AI',a:'지현이(디지털거북이)',p:'시프트',c:'컴퓨터/IT',r:99,s:'12'},
+{t:'긴긴밤',a:'루리',p:'문학동네',c:'어린이(초등)',r:100,s:'14'},
+{t:'SQL 자격검정 실전문제',a:'한국데이터산업진흥원',p:'한국데이터산업진흥원',c:'컴퓨터/IT',r:101,s:'04'},
+{t:'2027 해커스공무원 3분의 1로 줄여 쓴 김대현 행정법총론 기본서',a:'김대현',p:'해커스공무원',c:'취업/수험서',r:102,s:'12'},
+{t:'혼모노',a:'성해나',p:'창비',c:'소설',r:103,s:'14'},
+{t:'너는 원래 괜찮은 사람이야',a:'윤지영',p:'터닝페이지',c:'청소년',r:104,s:'07'},
+{t:'손자병법',a:'손자',p:'현대지성',c:'인문',r:105,s:'09'},
+{t:'오디세이 각본집',a:'크리스토퍼 놀란',p:'웅진지식하우스',c:'예술/대중문화',r:106,s:'05'},
+{t:'인생을 위한 최소한의 생각',a:'신영준 외',p:'상상스퀘어',c:'인문',r:107,s:'07'},
+{t:'체호프 단편선',a:'안톤 체호프',p:'민음사',c:'소설',r:108,s:'18'},
+{t:'그래머 게이트웨이 베이직: 초보를 위한 기초 영문법(Grammar Gateway Basic)',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:109,s:'14'},
+{t:'독성 인간',a:'리앤 텐 브링크',p:'웅진지식하우스',c:'인문',r:110,s:'04'},
+{t:'인간 실격',a:'다자이 오사무',p:'민음사',c:'소설',r:111,s:'12'},
+{t:'임신 출산 육아 대백과(2026-2027)',a:'삼성출판사 편집부',p:'삼성출판사',c:'가정/육아',r:112,s:'02'},
+{t:'구원에게',a:'정영욱',p:'부크럼',c:'시/에세이',r:113,s:'01'},
+{t:'한 권으로 끝내는 해커스 토익 800+(LC+RC+VOCA)',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:114,s:'24'},
+{t:'The Scent of Page : 룸스프레이 80ML',a:'교보문고',p:'교보문고',c:'책향',r:115,s:'23'},
+{t:'돈의 속성(400쇄 리커버에디션)',a:'김승호',p:'스노우폭스북스',c:'경제/경영',r:116,s:'19'},
+{t:'위버멘쉬',a:'프리드리히 니체',p:'떠오름(RISE)',c:'인문',r:117,s:'09'},
+{t:'여덟 단어',a:'박웅현',p:'인티앤',c:'인문',r:118,s:'20'},
+{t:'시간의 감촉',a:'은희경',p:'문학동네',c:'소설',r:119,s:'07'},
+{t:'바로바로 클로드 with 코워크, 스킬, 클로드 코드, 디자인',a:'차진우',p:'골든래빗(주)',c:'컴퓨터/IT',r:120,s:'03'},
+{t:'머도쿠',a:'마누엘 가란드',p:'중앙북스',c:'취미/실용/스포츠',r:121,s:'14'},
+{t:'EBS 왕초보영어(하)(2026)',a:'마스터유진',p:'한국교육방송공사(EBSi)',c:'외국어',r:122,s:'19'},
+{t:'오디세이',a:'제럴딘 매코크런',p:'윌마',c:'어린이(초등)',r:123,s:'09'},
+{t:'투자에 대한 생각',a:'하워드 막스',p:'비즈니스맵',c:'경제/경영',r:124,s:'08'},
+{t:'멜로우TV 5: 멜당탕탕 빌런의 등장 박스 패키지',a:'멜로우TV',p:'학산문화사',c:'어린이(초등)',r:125,s:'22'},
+{t:'나미야 잡화점의 기적(무선 보급판)',a:'히가시노 게이고',p:'현대문학',c:'소설',r:126,s:'06'},
+{t:'노르웨이의 숲',a:'무라카미 하루키',p:'민음사',c:'소설',r:127,s:'02'},
+{t:'우리는 가장 밝은 밤에 헤어졌다',a:'표도르 도스토옙스키',p:'윌마',c:'소설',r:128,s:'16'},
+{t:'서아쌤의 토익 비밀과외 START',a:'최서아 외',p:'시원스쿨닷컴',c:'외국어',r:129,s:'03'},
+{t:'2027 해커스공무원 영어 올인원 기본서 (9급 공무원) 세트',a:'해커스 공무원시험연구소',p:'해커스공무원',c:'취업/수험서',r:130,s:'11'},
+{t:'2026 단기 합격 해커스공기업 NCS 통합 기본서(모듈형+피듈형+PSAT형+모의고사 6회분)',a:'윤종혁 외',p:'해커스잡',c:'취업/수험서',r:131,s:'01'},
+{t:'어른의 행복은 조용하다',a:'태수',p:'페이지2북스',c:'시/에세이',r:132,s:'09'},
+{t:'대한민국 부의 감각',a:'터보832',p:'체인지업',c:'경제/경영',r:133,s:'11'},
+{t:'해커스 일본어 첫걸음: 기초20일 독학 완성!',a:'해커스 일본어연구소',p:'해커스어학연구소',c:'외국어',r:134,s:'16'},
+{t:'말랑말랑 밋다다의 SD 캐릭터 그리기',a:'밋다다',p:'디지털북스',c:'예술/대중문화',r:135,s:'09'},
+{t:'소년이 온다',a:'한강',p:'창비',c:'소설',r:136,s:'23'},
+{t:'더 시스템(THE SYSTEM)',a:'스콧 애덤스',p:'베리북',c:'자기계발',r:137,s:'16'},
+{t:'인비인',a:'성해나',p:'한겨레출판',c:'소설',r:139,s:'13'},
+{t:'The Scent of Page : 차량용 방향제(개선판)',a:'교보문고',p:'교보문고',c:'책향',r:140,s:'12'},
+{t:'최소한의 한국사',a:'최태성',p:'프런트페이지',c:'역사/문화',r:141,s:'20'},
+{t:'2027 공단기 써니 행정법총론 기본서',a:'박준철',p:'에스티유니타스',c:'취업/수험서',r:142,s:'19'},
+{t:'데일 카네기 인간관계론(50만부 돌파 초판 무삭제 완역본)',a:'데일 카네기',p:'현대지성',c:'자기계발',r:143,s:'12'},
+{t:'일 마키아벨리',a:'니콜로 마키아벨리',p:'떠오름',c:'인문',r:144,s:'17'},
+{t:'2026 한 권으로 끝내는 시나공 컴활 2급 필기+실기',a:'길벗알앤디',p:'길벗',c:'컴퓨터/IT',r:145,s:'22'},
+{t:'살 것인가, 팔 것인가, 버틸 것인가 Buy Sell Hold',a:'목대균',p:'서삼독',c:'경제/경영',r:146,s:'18'},
+{t:'2027 이기적 빅데이터분석기사 필기 기본서',a:'이혜영 외',p:'영진닷컴',c:'컴퓨터/IT',r:147,s:'20'},
+{t:'2027 선재국어 신유형 매일 국어 1',a:'이선재',p:'수비니겨',c:'취업/수험서',r:148,s:'19'},
+{t:'사고력을 키우는 수학의 힘',a:'장허',p:'미디어숲',c:'과학',r:149,s:'06'},
+{t:'3월의 벽력 2',a:'Junko Ike',p:'대원씨아이',c:'만화',r:150,s:'20'},
+{t:'박곰희 연금 부자 수업',a:'박곰희',p:'인플루엔셜',c:'경제/경영',r:151,s:'16'},
+{t:'김헌의 그리스 로마 신화',a:'김헌',p:'을유문화사',c:'역사/문화',r:152,s:'03'},
+{t:'나는 소망한다 내게 금지된 것을',a:'양귀자',p:'쓰다',c:'소설',r:153,s:'23'},
+{t:'내가 점점 더 좋아지는 책',a:'장인혜(이네쌤)',p:'웅진주니어',c:'어린이(초등)',r:154,s:'22'},
+{t:'숨결이 바람 될 때(10주년 에디션)',a:'폴 칼라니티',p:'흐름출판',c:'시/에세이',r:155,s:'24'},
+{t:'노화는 어디까지 늦출 수 있는가',a:'요시모리 다모쓰',p:'이너북',c:'과학',r:156,s:'23'},
+{t:'복숭아와 애벌레',a:'안녕달',p:'창비',c:'유아(0~7세)',r:157,s:'04'},
+{t:'한 권으로 끝내는 해커스 토익 700+(LC+RC+VOCA)',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:158,s:'15'},
+{t:'일리아스',a:'호메로스',p:'숲',c:'인문',r:159,s:'08'},
+{t:'흔한남매의 흔한 호기심 15',a:'흔한남매',p:'미래엔아이세움',c:'어린이(초등)',r:160,s:'01'},
+{t:'서아쌤의 토익 비밀과외',a:'최서아 외',p:'시원스쿨닷컴',c:'외국어',r:161,s:'24'},
+{t:'압록강은 흐른다',a:'이미륵',p:'민음사',c:'소설',r:162,s:'20'},
+{t:'다정한 사람이 이긴다(스페셜 양장 리커버판)',a:'이해인',p:'필름(Feelm)',c:'시/에세이',r:163,s:'04'},
+{t:'무례한 세상에서 나를 지키는 법',a:'발타자르 그라시안',p:'논픽션',c:'자기계발',r:164,s:'15'},
+{t:'공부가 결국 너를 지켜줄 거야',a:'임민찬',p:'퍼스트펭귄',c:'청소년',r:165,s:'20'},
+{t:'세종의 나라 1',a:'김진명',p:'이타북스',c:'소설',r:166,s:'04'},
+{t:'오디세이아',a:'호메로스',p:'비룡소',c:'어린이(초등)',r:167,s:'03'},
+{t:'잊기 좋은 이름',a:'김애란',p:'문학동네',c:'시/에세이',r:168,s:'20'},
+{t:'2027 선재국어 시간 단축 독해 훈련 1일 3독',a:'이선재',p:'수비니겨',c:'취업/수험서',r:169,s:'13'},
+{t:'명탐정 코난 108(특장판)',a:'Gosho AOYAMA',p:'서울미디어코믹스(서울문화사)',c:'만화',r:170,s:'09'},
+{t:'GO! 독학 일본어 첫걸음',a:'최유리 외',p:'시원스쿨닷컴',c:'외국어',r:171,s:'14'},
+{t:'ETS 토익 기출보카(VOCA)',a:'ETS',p:'YBM',c:'외국어',r:172,s:'07'},
+{t:'서성이다',a:'장강명',p:'현대문학',c:'소설',r:173,s:'24'},
+{t:'완벽한 원시인',a:'자청',p:'필로틱',c:'인문',r:174,s:'17'},
+{t:'2027 유휘운 행정법총론 요약노트+기출문제(요플)',a:'유휘운',p:'모두공북스',c:'취업/수험서',r:175,s:'16'},
+{t:'코스모스',a:'칼 세이건',p:'사이언스북스',c:'과학',r:176,s:'24'},
+{t:'동물농장',a:'조지 오웰',p:'민음사',c:'소설',r:177,s:'08'},
+{t:'사고외주',a:'홍진기',p:'어크로스',c:'인문',r:178,s:'16'},
+{t:'면도날',a:'서머싯 몸',p:'민음사',c:'소설',r:179,s:'21'},
+{t:'독끝 NCS 기본서: 독학으로 끝내는 공기업 NCS 통합기본서 (PSAT형+모듈형+피듈형)',a:'길잡이 연구소',p:'애드투',c:'취업/수험서',r:180,s:'02'},
+{t:'너를 아끼며 살아라',a:'나태주',p:'더블북',c:'시/에세이',r:181,s:'10'},
+{t:'오뒷세이아: 흔들리는 인간에 대하여',a:'조태경',p:'논픽션',c:'인문',r:182,s:'21'},
+{t:'People We Meet on Vacation',a:'Henry, Emily',p:'Berkeley',c:'문학',r:183,s:'02'},
+{t:'2026 시대에듀 투자자산운용사 실제유형 모의고사 + 특별부록 PASSCODE Premium Plus ver 3.0',a:'유창호',p:'시대에듀',c:'취업/수험서',r:184,s:'04'},
+{t:'만능문장으로 끝내는 토익스피킹 시계토끼 올인원 기본서 7일 완성',a:'시계토끼제니쌤(차지영)',p:'시계토끼',c:'외국어',r:185,s:'21'},
+{t:'최소한의 세계사',a:'이다지',p:'프런트페이지',c:'역사/문화',r:186,s:'20'},
+{t:'동물 농장 사운드북',a:'샘 태플린',p:'어스본코리아',c:'유아(0~7세)',r:187,s:'10'},
+{t:'오만과 편견',a:'제인 오스틴',p:'민음사',c:'소설',r:188,s:'06'},
+{t:'세종의 나라 2',a:'김진명',p:'이타북스',c:'소설',r:189,s:'20'},
+{t:'조선범죄실록',a:'정명섭',p:'교보문고',c:'역사/문화',r:190,s:'22'},
+{t:'딱 1년만 미쳐라',a:'리치파카(강연주)',p:'모티브',c:'자기계발',r:191,s:'15'},
+{t:'한권 한달 완성 일본어 말하기 Lv 1',a:'시원스쿨어학연구소',p:'시원스쿨닷컴',c:'외국어',r:192,s:'11'},
+{t:'신경 끄기의 기술(한교동 에디션)',a:'마크 맨슨',p:'갤리온',c:'시/에세이',r:194,s:'17'},
+{t:'사피엔스',a:'유발 하라리',p:'김영사',c:'인문',r:195,s:'07'},
+{t:'1984',a:'조지 오웰',p:'민음사',c:'소설',r:196,s:'15'},
+{t:'구의 증명(리커버판)',a:'최진영',p:'은행나무',c:'소설',r:197,s:'20'},
+{t:'마케팅 설계자',a:'러셀 브런슨',p:'윌북',c:'경제/경영',r:198,s:'16'},
+{t:'2027 공단기 심슨 보카',a:'심우철',p:'에스티유니타스',c:'취업/수험서',r:200,s:'04'},
+{t:'사춘기 엄마의 오장육부',a:'나민애',p:'서교책방',c:'시/에세이',r:201,s:'06'},
+{t:'왜 일하는가',a:'이나모리 가즈오',p:'다산북스',c:'자기계발',r:202,s:'20'},
+{t:'꽃을 보듯 너를 본다(100만 부 기념 에디션)(리커버:K)',a:'나태주',p:'지혜',c:'시/에세이',r:203,s:'13'},
+{t:'한 권으로 끝내는 해커스 토익 900+(LC+RC+VOCA)',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:204,s:'21'},
+{t:'2027 해커스공무원 신민숙 쉬운국어 독해 강화 200제',a:'신민숙',p:'해커스공무원',c:'취업/수험서',r:206,s:'06'},
+{t:'걍레오: 그냥 레오의 오늘 요리',a:'강레오',p:'하이스트',c:'요리',r:207,s:'20'},
+{t:'해커스 토익 RC Reading(리딩) 기본서',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:209,s:'11'},
+{t:'주식의 시대',a:'EBS 다큐프라임 〈주식의 시대〉 제작진',p:'위즈덤하우스',c:'경제/경영',r:210,s:'10'},
+{t:'당신은 결국 무엇이든 해내는 사람(특별 리커버 에디션)',a:'김상현',p:'필름(Feelm)',c:'시/에세이',r:211,s:'18'},
+{t:'2026 이지패스 ADsP 데이터분석 준전문가',a:'박현민 외',p:'위키북스',c:'컴퓨터/IT',r:212,s:'11'},
+{t:'홍학의 자리',a:'정해연',p:'엘릭시르',c:'소설',r:213,s:'10'},
+{t:'오디세이아·일리아스 세트',a:'질리언 크로스',p:'더숲',c:'청소년',r:214,s:'15'},
+{t:'2027 선재국어 독해야 산다 1일 1독',a:'이선재 외',p:'수비니겨',c:'취업/수험서',r:215,s:'02'},
+{t:'큰별쌤 최태성의 별별한국사 시대별 기출문제집 한국사능력검정시험 심화(1,2,3급)',a:'최태성',p:'이투스북',c:'인문',r:216,s:'07'},
+{t:'찰리 멍거 바이블 완결판',a:'김재현 외',p:'에프엔미디어',c:'경제/경영',r:217,s:'15'},
+{t:'빅터 프랭클의 죽음의 수용소에서(20주년 기념보급판)',a:'빅터 프랭클',p:'청아출판사',c:'시/에세이',r:218,s:'23'},
+{t:'제철 행복',a:'김신지',p:'인플루엔셜',c:'시/에세이',r:219,s:'07'},
+{t:'이기적 유전자',a:'리처드 도킨스',p:'을유문화사',c:'과학',r:220,s:'21'},
+{t:'김재우의 기본 동사 100',a:'김재우',p:'상상스퀘어',c:'외국어',r:221,s:'02'},
+{t:'달과 6펜스',a:'서머싯 몸',p:'민음사',c:'소설',r:222,s:'10'},
+{t:'너무 시끄러운 고독',a:'보후밀 흐라발',p:'문학동네',c:'소설',r:223,s:'06'},
+{t:'깨달은 들짐승처럼 살기로 했다',a:'한그루(뉴욕털게)',p:'더퀘스트',c:'인문',r:224,s:'08'},
+{t:'스파이 패밀리 17',a:'Tatsuya Endo',p:'학산문화사',c:'만화',r:225,s:'22'},
+{t:'조용히 해내는 사람',a:'이재은',p:'빅피시',c:'시/에세이',r:226,s:'06'},
+{t:'포스트 로열티',a:'백성국',p:'모모북스',c:'경제/경영',r:227,s:'05'},
+{t:'악수도 없이 헤어졌다',a:'피천득',p:'민음사',c:'소설',r:228,s:'01'},
+{t:'사라진 근대사 100장면 1: 몰락의 시대',a:'박종인',p:'와이즈맵',c:'역사/문화',r:230,s:'04'},
+{t:'10일 만에 끝내는 해커스 OPIc 오픽 Advanced 공략',a:'해커스 오픽연구소',p:'해커스',c:'외국어',r:231,s:'21'},
+{t:'일본어 무작정 따라하기(완전판)',a:'후지이 아사리',p:'길벗이지톡',c:'외국어',r:232,s:'02'},
+{t:'The Scent of Page : 샤쉐',a:'교보문고',p:'교보문고',c:'책향',r:234,s:'08'},
+{t:'데뷔 못 하면 죽는 병 걸림 5부 굿즈박스 세트(한정판)',a:'백덕수',p:'위시북스',c:'소설',r:235,s:'19'},
+{t:'자유민주주의에 무슨 일이 일어났는가?',a:'대런 아세모글루',p:'생각의힘',c:'정치/사회',r:236,s:'18'},
+{t:'2027 해커스공무원 신민숙 쉬운국어 문법·공문서 강화 200제(9급 공무원)',a:'신민숙',p:'해커스공무원',c:'취업/수험서',r:238,s:'06'},
+{t:'원피스 114: 갓 밸리 사건',a:'Eiichiro Oda',p:'대원씨아이',c:'만화',r:239,s:'05'},
+{t:'2026 지텔프 공식 기출문제집 7회분 Level 2',a:'G-TELP KOREA 외',p:'챔프스터디',c:'외국어',r:240,s:'04'},
+{t:'공시 6년 실패, 중소기업 김 대리는 어떻게 6년 만에 22억을 벌었나',a:'김동면',p:'모티브',c:'경제/경영',r:241,s:'18'},
+{t:'전설로 떠나는 월가의 영웅',a:'피터 린치 외',p:'국일증권경제연구소',c:'경제/경영',r:242,s:'23'},
+{t:'부처님 말씀대로 살아보니',a:'토니 페르난도',p:'윌마',c:'자기계발',r:243,s:'04'},
+{t:'해커스 토익 LC Listening(리스닝) 기본서',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:244,s:'09'},
+{t:'바보야 성격이 아니야 문제는 말투야',a:'황시투안',p:'이든서재',c:'자기계발',r:245,s:'14'},
+{t:'흔한남매 22',a:'흔한남매',p:'미래엔아이세움',c:'어린이(초등)',r:246,s:'10'},
+{t:'총 균 쇠',a:'재레드 다이아몬드',p:'김영사',c:'역사/문화',r:247,s:'12'},
+{t:'투자는 심리게임이다',a:'앙드레 코스톨라니',p:'미래의창',c:'경제/경영',r:248,s:'11'},
+{t:'해커스 보카(Hackers Vocabulary)',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:249,s:'19'},
+{t:'새는 날아가면서 뒤돌아보지 않는다',a:'류시화',p:'더숲',c:'시/에세이',r:250,s:'03'},
+{t:'우리들의 파리가 생각나요',a:'정현주',p:'예경',c:'시/에세이',r:251,s:'20'},
+{t:'매스커레이드 라이프',a:'히가시노 게이고',p:'현대문학',c:'소설',r:252,s:'19'},
+{t:'아몬드(청소년)',a:'손원평',p:'다즐링',c:'청소년',r:253,s:'21'},
+{t:'2027 이동기 영어 문법 500제 + 핵심문법 44포인트 요약노트',a:'이앤미래',p:'지금',c:'취업/수험서',r:254,s:'20'},
+{t:'말하지 않고 말하기',a:'김정운',p:'21세기북스',c:'인문',r:255,s:'19'},
+{t:'EBS Easy English (2026년 9월)',a:'이보영',p:'동아출판',c:'잡지',r:256,s:'06'},
+{t:'EBS 입이 트이는 영어 (2026년 9월)',a:'이현석',p:'동아출판',c:'잡지',r:257,s:'05'},
+{t:'아코디언',a:'천명관',p:'창비',c:'소설',r:258,s:'01'},
+{t:'렛뎀 이론',a:'멜 로빈스',p:'비즈니스북스',c:'자기계발',r:259,s:'12'},
+{t:'해커스 토익 실전 LC+RC 3(모의고사 문제집+해설집)',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:260,s:'02'},
+{t:'달리기를 말할 때 내가 하고 싶은 이야기',a:'무라카미 하루키',p:'문학사상',c:'시/에세이',r:261,s:'07'},
+{t:'최민준의 아들코칭 백과',a:'최민준',p:'위즈덤하우스',c:'가정/육아',r:262,s:'09'},
+{t:'슈뻘맨의 숨은 과학 찾기 8',a:'슈뻘맨',p:'미래엔아이세움',c:'어린이(초등)',r:263,s:'02'},
+{t:'자본주의',a:'EBS 자본주의 제작팀',p:'가나출판사',c:'경제/경영',r:264,s:'01'},
+{t:'나는 도대체 왜 눈치를 볼까',a:'케리 올리치 외',p:'북플레저',c:'자기계발',r:265,s:'18'},
+{t:'먼저 온 미래',a:'장강명',p:'동아시아',c:'인문',r:266,s:'02'},
+{t:'2025 시원스쿨 토익 기출유형 모의고사 3회분',a:'시원스쿨어학연구소',p:'시원스쿨닷컴',c:'외국어',r:267,s:'19'},
+{t:'말투만 바꿨을 뿐인데(10만 부 기념 개정판)',a:'김민성',p:'모티브',c:'자기계발',r:268,s:'24'},
+{t:'초역 부처의 말',a:'코이케 류노스케',p:'포레스트북스',c:'인문',r:269,s:'05'},
+{t:'ETS 토익 정기시험 기출문제집 1000 Vol 4 RC(리딩)',a:'ETS',p:'YBM',c:'외국어',r:270,s:'22'},
+{t:'ETS 토익 정기시험 기출문제집 1000 Vol 4 LC(리스닝)',a:'ETS',p:'YBM',c:'외국어',r:272,s:'16'},
+{t:'뒤틀린 사랑',a:'아나 황',p:'모모',c:'소설',r:273,s:'06'},
+{t:'세상이 그대를 속일지라도',a:'김상욱',p:'동아시아',c:'과학',r:274,s:'11'},
+{t:'처음 읽는 그리스 로마 신화 14: 돌아온 오디세우스',a:'최설희',p:'미래엔아이세움',c:'어린이(초등)',r:275,s:'19'},
+{t:'이향인',a:'라미 카민스키',p:'21세기북스',c:'인문',r:276,s:'21'},
+{t:'참을 수 없는 존재의 가벼움(리커버판)',a:'밀란 쿤데라',p:'민음사',c:'소설',r:277,s:'11'},
+{t:'읽으면 수학천재가 되는 만화책 1',a:'김지영',p:'올드스테어즈',c:'청소년',r:278,s:'10'},
+{t:'머니 트렌드 2027',a:'정태익 외',p:'북모먼트',c:'경제/경영',r:279,s:'21'},
+{t:'호두까기 인형 사운드북',a:'피오나 와트',p:'어스본코리아',c:'유아(0~7세)',r:280,s:'08'},
+{t:'JLPT(일본어능력시험) 한권으로 끝내기 N3',a:'이치우 외',p:'다락원',c:'외국어',r:281,s:'07'},
+{t:'미국을 만든 세계',a:'유재일',p:'김영사',c:'역사/문화',r:282,s:'15'},
+{t:'김미경의 플러스 휴먼',a:'김미경',p:'어웨이크(AWAKE)',c:'자기계발',r:283,s:'05'},
+{t:'희망',a:'양귀자',p:'쓰다',c:'소설',r:284,s:'10'},
+{t:'2027 공단기 선재국어 한 권으로 끝장내는 올인원 공무원 국어',a:'이선재',p:'에스티유니타스',c:'취업/수험서',r:286,s:'04'},
+{t:'유럽 도시 기행 1',a:'유시민',p:'생각의길',c:'인문',r:287,s:'09'},
+{t:'운명을 보는 기술',a:'박성준',p:'페이지2북스',c:'자기계발',r:288,s:'14'},
+{t:'소유냐 존재냐',a:'에리히 프롬',p:'까치',c:'인문',r:289,s:'16'},
+{t:'백년허리 2: 치료편',a:'정선근',p:'언탱글링',c:'건강',r:290,s:'12'},
+{t:'싫어하는 사람을 사라지게 하는 방법',a:'호리 모토코',p:'딥앤와이드',c:'시/에세이',r:291,s:'20'},
+{t:'이효석의 21세기 투자법',a:'이효석',p:'상상스퀘어',c:'경제/경영',r:292,s:'10'},
+{t:'노인과 바다',a:'어니스트 헤밍웨이',p:'민음사',c:'소설',r:293,s:'21'},
+{t:'인생에 한번은 오디세이아',a:'샘 아크바',p:'부키',c:'인문',r:294,s:'02'},
+{t:'유럽 도시 기행 2',a:'유시민',p:'생각의길',c:'인문',r:295,s:'01'},
+{t:'Wonder',a:'R. J. Palacio',p:'Random House USA Inc',c:'유아/아동/청소년',r:296,s:'21'},
+{t:'멜로우TV 팀나빠 1: 나사 빠진 친구들',a:'멜로우TV',p:'학산키즈',c:'어린이(초등)',r:297,s:'05'},
+{t:'잘했고 잘하고 있고 잘될 것이다(50만부 기념)',a:'정영욱',p:'부크럼',c:'시/에세이',r:298,s:'01'},
+{t:'2027 심슨 문법',a:'심우철',p:'에스티유니타스',c:'취업/수험서',r:299,s:'09'},
+{t:'서아쌤의 토익 비밀과외 기출 VOCA',a:'시원스쿨어학연구소',p:'시원스쿨닷컴',c:'외국어',r:300,s:'23'},
+{t:'사랑해 사랑해 사랑해(출간 15주년 기념판)',a:'버나뎃 로제티 슈스탁',p:'보물창고',c:'유아(0~7세)',r:301,s:'19'},
+{t:'야마다 군과 Lv999의 사랑을 하다 8(특별판)',a:'마시로',p:'디앤씨미디어',c:'만화',r:302,s:'12'},
+{t:'말은 운명을 데려온다',a:'이하영',p:'토네이도',c:'자기계발',r:303,s:'20'},
+{t:'물리박사 김상욱의 수상한 연구실 0: 물리 이데아의 탄생',a:'김하연',p:'아울북',c:'어린이(초등)',r:304,s:'16'},
+{t:'세이노의 가르침',a:'세이노(SayNo)',p:'데이원',c:'자기계발',r:305,s:'03'},
+{t:'The Odyssey: The Complete Screenplay',a:'Christopher Nolan',p:'Faber & Faber',c:'예술/건축',r:306,s:'23'},
+{t:'초지능 시대 생존을 위한 AI 교양 수업',a:'바오쿤',p:'지니의서재',c:'과학',r:307,s:'13'},
+{t:'주술회전 모듈로 1: 특급 사안',a:'Gege Akutami',p:'서울미디어코믹스(서울문화사)',c:'만화',r:308,s:'06'},
+{t:'불변의 법칙',a:'모건 하우절',p:'서삼독',c:'경제/경영',r:309,s:'05'},
+{t:'어른의 감정을 돌보는 100일 필사 노트',a:'김종원',p:'청림라이프',c:'자기계발',r:310,s:'13'},
+{t:'해커스 JLPT(일본어능력시험) N3 한권합격',a:'해커스 JLPT연구소',p:'해커스어학연구소',c:'외국어',r:311,s:'06'},
+{t:'김동희 세계관 호기심 환장 RPG',a:'김동희 세계관',p:'아울북',c:'어린이(초등)',r:312,s:'17'},
+{t:'역사의 쓸모',a:'최태성',p:'프런트페이지',c:'역사/문화',r:313,s:'13'},
+{t:'교양 있고 싶은 사람을 위한 최소한의 철학',a:'교있사(김준석)',p:'딥앤와이드',c:'인문',r:314,s:'24'},
+{t:'아메리칸 서바이벌',a:'올리버 샨 그랜트 외',p:'21세기북스',c:'시/에세이',r:315,s:'14'},
+{t:'100세까지 월 500만 원 받는 ETF 연금 수업',a:'제도권주식분석(최기원)',p:'와이즈베리',c:'경제/경영',r:316,s:'07'},
+{t:'연금술사',a:'파울로 코엘료',p:'북다',c:'소설',r:317,s:'15'},
+{t:'물고기는 존재하지 않는다',a:'룰루 밀러',p:'곰출판',c:'과학',r:318,s:'02'},
+{t:'0~3세 기적의 뇌과학 육아',a:'그리어 커센바움',p:'21세기북스',c:'가정/육아',r:319,s:'16'},
+{t:'NEW 가장 쉬운 독학 일본어 첫걸음',a:'김연수 외',p:'동양북스',c:'외국어',r:320,s:'15'},
+{t:'모두가 자신의 무가치함과 싸우고 있다 대본집 세트',a:'박해영',p:'알에이치코리아',c:'예술/대중문화',r:321,s:'20'},
+{t:'기쁨에도 슬픔에도 아랑곳없이',a:'박준',p:'난다',c:'시/에세이',r:322,s:'16'},
+{t:'삐뽀삐뽀 119 이유식',a:'하정훈',p:'유니책방',c:'요리',r:323,s:'15'},
+{t:'싸모스 쌈벤저스 1',a:'싸모스',p:'학산키즈',c:'어린이(초등)',r:324,s:'17'},
+{t:'서울대 TEPS 텝스 공식 기출문제집 5회분(2026)',a:'서울대학교 TEPS관리위원회 기출문제',p:'시원스쿨닷컴',c:'외국어',r:325,s:'13'},
+{t:'해커스공무원 영문법 합격생 필기노트',a:'해커스 공무원시험연구소',p:'해커스공무원',c:'취업/수험서',r:326,s:'12'},
+{t:'팩트풀니스(50만 부 뉴에디션)',a:'한스 로슬링 외',p:'김영사',c:'인문',r:327,s:'14'},
+{t:'일리아스(고대 그리스어 완역본)',a:'호메로스',p:'현대지성',c:'인문',r:328,s:'22'},
+{t:'스킵과 로퍼 12',a:'타카마츠 미사키',p:'와이엔케이미디어',c:'만화',r:329,s:'06'},
+{t:'타몬 군 지금 어느 쪽?! 13(한정판)',a:'Yuki Shiwasu',p:'학산문화사',c:'만화',r:330,s:'05'},
+{t:'호밀밭의 파수꾼',a:'제롬 데이비드 샐린저',p:'민음사',c:'소설',r:331,s:'19'},
+{t:'착한 염증 나쁜 염증',a:'이승훈',p:'웅진지식하우스',c:'건강',r:332,s:'12'},
+{t:'윗집 부부',a:'황보름',p:'클레이하우스',c:'소설',r:333,s:'02'},
+{t:'포켓몬 생태도감',a:'요네하라 요시나리',p:'대원씨아이',c:'어린이(초등)',r:334,s:'19'},
+{t:'2026 시대에듀 한국실용글쓰기 실제 기출로 끝내기',a:'이원근 외',p:'시대고시기획',c:'인문',r:335,s:'15'},
+{t:'질문의 격',a:'유선경',p:'앤의서재',c:'인문',r:336,s:'02'},
+{t:'결혼ㆍ여름',a:'알베르 카뮈',p:'녹색광선',c:'시/에세이',r:337,s:'10'},
+{t:'은, 욕망의 세계',a:'틸만 벤디코프스키',p:'오팬하우스',c:'인문',r:338,s:'06'},
+{t:'누구에게나 가슴을 후벼파는 대사 한마디가 있다(사철제본)',a:'정덕현',p:'서교책방',c:'시/에세이',r:339,s:'08'},
+{t:'해커스 첫토익 LC+RC+VOCA 기초입문서',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:340,s:'19'},
+{t:'제로 투 원(10주년 기념판)',a:'피터 틸 외',p:'한국경제신문',c:'경제/경영',r:341,s:'03'},
+{t:'십 대를 위한 부자 습관, 부자 마인드',a:'한지우',p:'다빈치페이지',c:'청소년',r:342,s:'02'},
+{t:'2026 해커스경찰 갓대환 형사법 기본서 1: 형법',a:'김대환',p:'해커스경찰',c:'취업/수험서',r:343,s:'07'},
+{t:'스토너',a:'존 윌리엄스',p:'알에이치코리아',c:'소설',r:344,s:'12'},
+{t:'미국 성장주 처음 투자',a:'김운아',p:'경이로움',c:'경제/경영',r:345,s:'23'},
+{t:'히스토리아 비테이',a:'최재천',p:'지식서재',c:'과학',r:346,s:'22'},
+{t:'어린 왕자(초판본)(1943년 오리지널 초판본 표지디자인)',a:'앙투안 생텍쥐페리',p:'더스토리',c:'소설',r:347,s:'03'},
+{t:'매거진 조이 Vol 3: 가비지타임',a:'2사장',p:'다산코믹스(DASAN COMICS)',c:'만화',r:348,s:'20'},
+{t:'2027 공단기 심슨 독해',a:'심우철',p:'에스티유니타스',c:'취업/수험서',r:349,s:'13'},
+{t:'2026 해커스경찰 갓대환 형사법 기본서 2: 형사소송법 수사와 증거',a:'김대환',p:'해커스경찰',c:'취업/수험서',r:350,s:'21'},
+{t:'마음이 단단해지는 하루 한 문장 일본어 필사',a:'안은미',p:'센시오',c:'외국어',r:351,s:'11'},
+{t:'하룻밤에 읽는 오디세이아',a:'호메로스',p:'아이템하우스',c:'역사/문화',r:352,s:'10'},
+{t:'모든 날들이 행복했으면 좋겠어',a:'갱여운',p:'하이스트',c:'시/에세이',r:353,s:'03'},
+{t:'10일 만에 끝내는 해커스 OPIc 오픽 START: Intermediate 공략',a:'해커스 오픽연구소',p:'해커스',c:'외국어',r:354,s:'02'},
+{t:'미움받을 용기(200만 부 기념 스페셜 에디션)',a:'기시미 이치로 외',p:'인플루엔셜',c:'인문',r:355,s:'01'},
+{t:'라오어의 미국주식 무한매수법',a:'라오어',p:'알키',c:'경제/경영',r:356,s:'24'},
+{t:'단 한 번의 삶(강물에디션 활판인쇄 한정판)',a:'김영하',p:'복복서가',c:'시/에세이',r:357,s:'11'},
+{t:'여름',a:'이디스 워튼',p:'민음사',c:'소설',r:358,s:'01'},
+{t:'일상주의자의 감각',a:'김이나',p:'이야기장수',c:'시/에세이',r:359,s:'06'},
+{t:'왜 나는 너를 사랑하는가(70만 부 기념 리커버)',a:'알랭 드 보통',p:'청미래',c:'소설',r:360,s:'20'},
+{t:'흔한남매 이무기 4(특별 한정판)',a:'흔한남매',p:'미래엔아이세움',c:'어린이(초등)',r:361,s:'01'},
+{t:'악마는 열심히 산다',a:'김화진',p:'민음사',c:'소설',r:362,s:'09'},
+{t:'다크 심리학 2',a:'다크 사이드 프로젝트',p:'어센딩',c:'인문',r:363,s:'11'},
+{t:'Go Go 카카오프렌즈 41: 이란',a:'김미영',p:'아울북',c:'어린이(초등)',r:364,s:'04'},
+{t:'2027 심슨 구문',a:'심우철',p:'에스티유니타스',c:'취업/수험서',r:365,s:'09'},
+{t:'천 개의 파랑',a:'천선란',p:'허블',c:'소설',r:366,s:'08'},
+{t:'에스콰이어(ESQUIRE)(2026년 9월호)(B형)',a:'허스트중앙 편집부',p:'허스트중앙',c:'잡지',r:367,s:'10'},
+{t:'ETS 토익 단기공략 950+(LC+RC)',a:'ETS',p:'YBM',c:'외국어',r:369,s:'07'},
+{t:'행복의 기원',a:'서은국',p:'21세기북스',c:'인문',r:370,s:'12'},
+{t:'<조용히 해내는 사람> 도서+북토크 강연 패키지(도서포함)(온라인전용상품)',a:'이재은',p:'빅피시',c:'시/에세이',r:371,s:'05'},
+{t:'부의 인문학(20만부 기념 개정증보판)',a:'우석',p:'오픈마인드',c:'경제/경영',r:372,s:'01'},
+{t:'너무 성실한 시스템',a:'이산',p:'이너피스커뮤니케이션즈',c:'인문',r:373,s:'24'},
+{t:'최소한의 삼국지(최소한의 교양 수업 시리즈)',a:'최태성',p:'프런트페이지',c:'인문',r:374,s:'02'},
+{t:'바깥은 여름',a:'김애란',p:'문학동네',c:'소설',r:377,s:'18'},
+{t:'순례 주택',a:'유은실',p:'비룡소',c:'청소년',r:378,s:'23'},
+{t:'봄의 폭풍과 몬스터 9',a:'Mitsubachi Miyuki',p:'학산문화사',c:'만화',r:379,s:'04'},
+{t:'뿐이 토핑 이유식',a:'정주희',p:'서사원',c:'요리',r:380,s:'03'},
+{t:'시지프 신화',a:'알베르 카뮈',p:'민음사',c:'소설',r:381,s:'02'},
+{t:'삶은 그대에게 잘해줄 의무가 없다',a:'페마 쵸드론',p:'윌마',c:'자기계발',r:382,s:'22'},
+{t:'인생의 단맛을 보여주마',a:'김영민',p:'김영사',c:'소설',r:383,s:'12'},
+{t:'2027 황철곤 행정학 기본서 세트',a:'황철곤',p:'모두공북스',c:'취업/수험서',r:384,s:'17'},
+{t:'2026 해커스 GSAT 삼성직무적성검사 통합 기본서 최신기출유형+실전모의고사 (수리/추리)',a:'해커스 취업교육연구소',p:'해커스잡',c:'취업/수험서',r:385,s:'01'},
+{t:'5번 레인',a:'은소홀',p:'문학동네',c:'어린이(초등)',r:386,s:'15'},
+{t:'싫을 땐 싫다고 말해요',a:'다그마 가이슬러',p:'윌마',c:'유아(0~7세)',r:387,s:'20'},
+{t:'아비투스(양장특별판)',a:'도리스 메르틴',p:'다산초당',c:'인문',r:388,s:'01'},
+{t:'에스콰이어(ESQUIRE)(2026년 9월호)(C형)',a:'허스트중앙 편집부',p:'허스트중앙',c:'잡지',r:389,s:'15'},
+{t:'혼자 공부하는 바이브 코딩 with 클로드 코드',a:'조태호',p:'한빛미디어',c:'컴퓨터/IT',r:390,s:'14'},
+{t:'우리가 빛의 속도로 갈 수 없다면',a:'김초엽',p:'허블',c:'소설',r:391,s:'22'},
+{t:'흔들리는 나에게, 고전이 말했다',a:'오평선',p:'이너북',c:'자기계발',r:392,s:'03'},
+{t:'주식투자 무작정 따라하기(2026)',a:'윤재수',p:'길벗',c:'경제/경영',r:393,s:'17'},
+{t:'마션(스페셜 에디션)',a:'앤디 위어',p:'알에이치코리아',c:'소설',r:394,s:'01'},
+{t:'흔한남매의 흔한 국어 1',a:'최재연',p:'미래엔아이세움',c:'어린이(초등)',r:396,s:'22'},
+{t:'2026 위포트 공기업 NCS 통합 기본서',a:'위포트 연구소',p:'위포트',c:'취업/수험서',r:398,s:'19'},
+{t:'해커스 Updated 토플 리딩(Hackers Updated TOEFL Reading)',a:'David Cho 외',p:'해커스어학연구소',c:'외국어',r:399,s:'06'},
+{t:'류수영의 평생 레시피',a:'류수영',p:'세미콜론',c:'요리',r:400,s:'23'},
+{t:'하늘과 바람과 별과 시(초판본)',a:'윤동주',p:'더스토리',c:'시/에세이',r:401,s:'01'},
+{t:'제자리에 있다는 것',a:'클레르 마랭',p:'에디투스',c:'인문',r:402,s:'12'},
+{t:'실전 투자강의',a:'앙드레 코스톨라니',p:'미래의창',c:'경제/경영',r:403,s:'11'},
+{t:'눈물을 마시는 새 세트',a:'이영도',p:'황금가지',c:'소설',r:404,s:'10'},
+{t:'삐뽀삐뽀 119 소아과',a:'하정훈',p:'유니책방',c:'가정/육아',r:405,s:'18'},
+{t:'고래',a:'천명관',p:'문학동네',c:'소설',r:406,s:'20'},
+{t:'구멍청',a:'백희나',p:'스토리보울',c:'유아(0~7세)',r:407,s:'07'},
+{t:'처음부터 끝까지 고백',a:'주또(이주영)',p:'시선과단상',c:'시/에세이',r:408,s:'15'},
+{t:'죽음의 수용소에서',a:'빅터 프랭클',p:'청아출판사',c:'시/에세이',r:409,s:'17'},
+{t:'여름을 한 입 베어 물었더니',a:'이꽃님',p:'문학동네',c:'청소년',r:410,s:'19'},
+{t:'아르테미스(스페셜 에디션)',a:'앤디 위어',p:'알에이치코리아',c:'소설',r:411,s:'24'},
+{t:'2026 한 권으로 끝내는 시나공 컴활 1급 필기+실기',a:'길벗알앤디',p:'길벗',c:'컴퓨터/IT',r:413,s:'15'},
+{t:'똑똑한 학교생활 도감',a:'김지훤',p:'길벗',c:'어린이(초등)',r:414,s:'14'},
+{t:'주린이를 위한 최소한의 주식공부',a:'불스토리',p:'하이스트',c:'경제/경영',r:415,s:'16'},
+{t:'혹시 나한테 화났나?',a:'멕 조지프슨',p:'인플루엔셜',c:'인문',r:416,s:'06'},
+{t:'푸른 사자 와니니 10: 초원으로 가는 길',a:'이현',p:'창비',c:'어린이(초등)',r:417,s:'02'},
+{t:'2027 공단기 심우철 하프 모의고사 Season 1: 70+',a:'심우철',p:'에스티유니타스',c:'취업/수험서',r:418,s:'19'},
+{t:'결국 어떻게든 되더라고요',a:'정일영',p:'논픽션',c:'시/에세이',r:419,s:'12'},
+{t:'이름 없는 것들의 밤',a:'정보라',p:'현대문학',c:'소설',r:420,s:'14'},
+{t:'여름은 고작 계절',a:'김서해',p:'위즈덤하우스',c:'소설',r:421,s:'16'},
+{t:'Basic Grammar in Use Student\'s Book with Answers and Interactive eBook',a:'Raymond Murphy 외',p:'Cambridge University Press',c:'ELT/수험서',r:422,s:'15'},
+{t:'죽은 왕녀를 위한 파반느(양장 특별판)',a:'박민규',p:'위즈덤하우스',c:'소설',r:423,s:'20'},
+{t:'설민석의 한국사 대모험 38',a:'설민석 외',p:'단꿈아이',c:'어린이(초등)',r:425,s:'17'},
+{t:'해커스 JLPT(일본어능력시험)기출단어장 N5-N3',a:'해커스 JLPT 연구소',p:'해커스어학연구소',c:'외국어',r:426,s:'16'},
+{t:'정의란 무엇인가',a:'마이클 샌델',p:'와이즈베리',c:'인문',r:427,s:'12'},
+{t:'읽으면 수학천재가 되는 만화책: 초등A',a:'Team. Story G',p:'Oldstairs(올드스테어즈)',c:'어린이(초등)',r:428,s:'11'},
+{t:'에스콰이어(ESQUIRE)(2026년 9월호)(A형)',a:'허스트중앙 편집부',p:'허스트중앙',c:'잡지',r:429,s:'19'},
+{t:'돈의 방정식',a:'모건 하우절',p:'서삼독',c:'경제/경영',r:430,s:'06'},
+{t:'유목민의 투자의 정석',a:'유목민',p:'리더스북',c:'경제/경영',r:431,s:'05'},
+{t:'나는 오늘도 유물과 대화하러 간다',a:'서헌강',p:'다산초당',c:'인문',r:432,s:'10'},
+{t:'AI, 신의 탄생 인간의 종말',a:'엘리에저 유드코스키 외',p:'상상스퀘어',c:'경제/경영',r:433,s:'12'},
+{t:'청킹맨션의 보스는 알고 있다',a:'오가와 사야카',p:'갈라파고스',c:'인문',r:434,s:'17'},
+{t:'수학의 쓸모',a:'닉 폴슨 외',p:'더퀘스트',c:'과학',r:435,s:'22'},
+{t:'시한부',a:'백은별',p:'바른북스',c:'청소년',r:436,s:'21'},
+{t:'칵테일을 마시는 철학자들',a:'사라 베이크웰',p:'다산초당',c:'인문',r:437,s:'11'},
+{t:'채식주의자',a:'한강',p:'창비',c:'소설',r:438,s:'19'},
+{t:'영혼의 왈츠 1',a:'베르나르 베르베르',p:'열린책들',c:'소설',r:439,s:'12'},
+{t:'새의 선물',a:'은희경',p:'문학동네',c:'소설',r:440,s:'11'},
+{t:'포켓몬 대도감 1020+',a:'Junji KAWASHIMA',p:'대원키즈',c:'어린이(초등)',r:441,s:'19'},
+{t:'이반 일리치의 죽음',a:'레프 톨스토이',p:'민음사',c:'소설',r:442,s:'18'},
+{t:'작별하지 않는다',a:'한강',p:'문학동네',c:'소설',r:443,s:'20'},
+{t:'비폭력대화',a:'마셜 B. 로젠버그',p:'한국NVC출판사',c:'인문',r:444,s:'19'},
+{t:'차라투스트라는 이렇게 말했다',a:'프리드리히 니체',p:'민음사',c:'소설',r:445,s:'09'},
+{t:'2027 공단기 소방단기 써니 행정법총론 핵심집약',a:'박준철',p:'에스티유니타스',c:'취업/수험서',r:447,s:'12'},
+{t:'Holes (1999 Newbery Winner)',a:'Louis Sachar',p:'Yearling Books',c:'유아/아동/청소년',r:448,s:'20'},
+{t:'야마다 군과 Lv999의 사랑을 하다 8',a:'마시로',p:'디앤씨미디어',c:'만화',r:449,s:'13'},
+{t:'기획자의 언어',a:'편은지',p:'빌리버튼',c:'경제/경영',r:450,s:'24'},
+{t:'The Scent of Page : 패브릭 퍼퓸 50ML',a:'교보문고',p:'교보문고',c:'책향',r:451,s:'08'},
+{t:'노력이 무기가 될 때',a:'김현주',p:'청림라이프',c:'가정/육아',r:452,s:'04'},
+{t:'뇌가 멈추기 전에',a:'이승훈',p:'21세기북스',c:'건강',r:453,s:'06'},
+{t:'자기주도 초등 수학 로드맵',a:'최경희',p:'21세기북스',c:'가정/육아',r:454,s:'05'},
+{t:'만일 나에게 단 한 번의 아침이 남아 있다면(굿모닝 에디션)',a:'존 릴런드',p:'북모먼트',c:'인문',r:455,s:'22'},
+{t:'군주론(무삭제 완역본)',a:'니콜로 마키아벨리',p:'현대지성',c:'인문',r:456,s:'15'},
+{t:'백년허리 1: 진단편',a:'정선근',p:'언탱글링',c:'건강',r:457,s:'20'},
+{t:'인간 본성의 법칙 (리커버:K)',a:'로버트 그린',p:'위즈덤하우스',c:'인문',r:458,s:'22'},
+{t:'퇴근 후 100만 원 버는 미국 주식 바닥의 기술',a:'미부기',p:'모티브',c:'경제/경영',r:459,s:'12'},
+{t:'존재의 세 가지 거짓말',a:'아고타 크리스토프',p:'까치',c:'소설',r:460,s:'23'},
+{t:'스피킹 매트릭스 1분 영어 말하기',a:'김영욱(달변가 영쌤)',p:'길벗이지톡',c:'외국어',r:461,s:'01'},
+{t:'새들의 사회성',a:'편혜영',p:'문학동네',c:'소설',r:462,s:'24'},
+{t:'가브리엘의 잉글리시 다이어리',a:'Thomas Gabrielle Allanta',p:'상상스퀘어',c:'외국어',r:463,s:'08'},
+{t:'처음 JLPT N4·N5 단숨에 합격하기',a:'시원스쿨어학연구소',p:'시원스쿨닷컴',c:'외국어',r:464,s:'13'},
+{t:'하나님께 내 삶을 드린다는 것',a:'윌리엄 로',p:'CH북스(크리스천다이제스트)',c:'종교',r:465,s:'03'},
+{t:'나도 내 마음을 모를 때, 불교심리학',a:'보만',p:'불광출판사',c:'종교',r:466,s:'23'},
+{t:'해밀턴의 그리스로마신화',a:'이디스 해밀턴',p:'현대지성',c:'역사/문화',r:467,s:'07'},
+{t:'EEA: English for Everyday Activities(한글판)',a:'Lawrence J. Zwier',p:'웅진컴퍼스',c:'외국어',r:468,s:'06'},
+{t:'영어가 바로 터지는 기적의 말하기 영단어 1000',a:'이시원',p:'시원스쿨닷컴',c:'외국어',r:469,s:'20'},
+{t:'사라진 근대사 100장면 2: 반동의 시대',a:'박종인',p:'와이즈맵',c:'역사/문화',r:470,s:'16'},
+{t:'아버지의 해방일지',a:'정지아',p:'창비',c:'소설',r:471,s:'06'},
+{t:'The Daily Stoic',a:'Ryan Holiday',p:'Portfolio',c:'인문/사회',r:472,s:'08'},
+{t:'2027 공단기 선재국어 시간 단축 논리 훈련',a:'이선재 외',p:'에스티유니타스',c:'취업/수험서',r:473,s:'22'},
+{t:'영혼의 왈츠 2',a:'베르나르 베르베르',p:'열린책들',c:'소설',r:474,s:'03'},
+{t:'편안함의 습격',a:'마이클 이스터',p:'수오서재',c:'인문',r:475,s:'08'},
+{t:'신 퇴마록 신세편 1',a:'이우혁',p:'반타',c:'소설',r:476,s:'04'},
+{t:'사람은 무엇으로 사는가',a:'레프 톨스토이',p:'민음사',c:'소설',r:477,s:'15'},
+{t:'큰 뜻을 품은 자여, 왜 그 자리에 머물러 있는가',a:'정약용',p:'모티브',c:'인문',r:478,s:'20'},
+{t:'단절(들)',a:'클레르 마랭',p:'사람in',c:'인문',r:480,s:'17'},
+{t:'JLPT(일본어능력시험) 한권으로 끝내기 N2',a:'이치우 외',p:'다락원',c:'외국어',r:481,s:'13'},
+{t:'엄마가 유령이 되었어!',a:'노부미',p:'길벗어린이',c:'유아(0~7세)',r:482,s:'06'},
+{t:'설국',a:'가와바타 야스나리',p:'민음사',c:'소설',r:483,s:'08'},
+{t:'2026 해커스 SKCT SK그룹 종합역량검사 통합 기본서 최신기출유형+실전모의고사(언어이해/자료해석/창의수리/언어추리/수열추리)',a:'해커스 SKCT 취업교육연구소',p:'해커스잡',c:'취업/수험서',r:484,s:'10'},
+{t:'해커스 구문독해 100: 100개 필수구문으로 영어 직독직해',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:485,s:'21'},
+{t:'너의 행복은 나의 기쁨이야',a:'정한경',p:'북로망스',c:'시/에세이',r:486,s:'20'},
+{t:'ETS 토익 단기공략 650+(LC+RC)',a:'ETS',p:'YBM',c:'외국어',r:487,s:'07'},
+{t:'여름, 안부',a:'백가희',p:'클랩북스',c:'시/에세이',r:489,s:'19'},
+{t:'나쁜 일이 있어도 나쁜 날은 아니야',a:'정문정',p:'서교책방',c:'유아(0~7세)',r:490,s:'18'},
+{t:'인생에 단어가 스며드는 순간',a:'황선엽',p:'빛의서가',c:'인문',r:491,s:'14'},
+{t:'팬텀 버스터즈 7',a:'네오쇼코',p:'소미미디어',c:'만화',r:492,s:'04'},
+{t:'부의 사다리에 올라타라',a:'닉 매기울리',p:'알에이치코리아',c:'경제/경영',r:493,s:'21'},
+{t:'큰별쌤 최태성의 별별한국사 7일의 기적 한국사능력검정시험 심화(1, 2, 3급)(2026)',a:'최태성',p:'이투스북',c:'인문',r:494,s:'23'},
+{t:'who? 스페셜 크리스티아누 호날두',a:'김정욱',p:'다산어린이',c:'어린이(초등)',r:495,s:'10'},
+{t:'빨모쌤의 라이브 영어회화',a:'신용하',p:'웅진지식하우스',c:'외국어',r:496,s:'24'},
+{t:'머니머니 마니마니 초등 주식 사전',a:'김선',p:'이지북',c:'어린이(초등)',r:497,s:'23'},
+{t:'의사 어벤저스 27: 수면 장애, 편안한 사이가 돼라!',a:'고희정',p:'가나출판사',c:'어린이(초등)',r:498,s:'19'},
+{t:'여덟살 손글씨 첫걸음',a:'김해선',p:'서교책방',c:'어린이(초등)',r:499,s:'18'},
+{t:'나의 완벽한 장례식',a:'조현선',p:'북로망스',c:'소설',r:500,s:'23'},
+{t:'하네스 엔지니어링 with 클로드 코드',a:'황민호',p:'한빛미디어',c:'컴퓨터/IT',r:501,s:'16'},
+{t:'처음 읽는 삼국지 4: 충절의 천 리 길',a:'이문열',p:'미래엔아이세움',c:'어린이(초등)',r:502,s:'03'},
+{t:'불편한 편의점(벚꽃 에디션)',a:'김호연',p:'나무옆의자',c:'소설',r:503,s:'14'},
+{t:'해커스 Updated 토플 리스닝(Hackers Updated TOEFL Listening)',a:'David Cho 외',p:'해커스어학연구소',c:'외국어',r:505,s:'17'},
+{t:'쇼펜하우어 인생수업 2: 한 번뿐인 삶 이렇게 살아라',a:'쇼펜하우어',p:'하이스트',c:'인문',r:506,s:'07'},
+{t:'김재우의 기초 영어회화 100',a:'김재우',p:'상상스퀘어',c:'외국어',r:507,s:'24'},
+{t:'푸른 사자 와니니',a:'이현',p:'창비',c:'어린이(초등)',r:508,s:'11'},
+{t:'읽으면 수학천재가 되는 만화책 2',a:'김지영',p:'올드스테어즈',c:'청소년',r:509,s:'22'},
+{t:'책이라면 팔 만큼 1',a:'코지마 아오',p:'대원씨아이',c:'만화',r:510,s:'09'},
+{t:'필사, 어른이 되는 시간',a:'나태주',p:'북로그컴퍼니',c:'시/에세이',r:511,s:'23'},
+{t:'착! 붙는 일본어 독학 첫걸음',a:'일본어 공부기술연구소',p:'시사일본어사',c:'외국어',r:512,s:'16'},
+{t:'세계를 건너 너에게 갈게',a:'이꽃님',p:'문학동네',c:'청소년',r:513,s:'15'},
+{t:'우런니 샌드위치',a:'박혜진(Cream Park)',p:'클',c:'요리',r:514,s:'08'},
+{t:'휴대폰과 독화살',a:'장준호',p:'시월',c:'여행',r:515,s:'16'},
+{t:'백지 앞에서',a:'최은영',p:'문학동네',c:'시/에세이',r:516,s:'18'},
+{t:'수험생을 위한 100일 기도',a:'김종국',p:'생활성서사',c:'종교',r:517,s:'05'},
+{t:'2027 해커스군무원 신민숙 쉬운국어 문법 어휘 한 권으로 끝',a:'신민숙',p:'해커스군무원',c:'취업/수험서',r:519,s:'05'},
+{t:'ETS 토익 단기공략 850+(LC+RC)',a:'ETS',p:'YBM',c:'외국어',r:521,s:'11'},
+{t:'타키 포오 얼렁뚱땅 상식스쿨 10',a:'김언정',p:'대원키즈',c:'어린이(초등)',r:522,s:'04'},
+{t:'내 심장을 쏴라',a:'정유정',p:'은행나무',c:'소설',r:523,s:'06'},
+{t:'명료함',a:'탁민 오',p:'탁희재',c:'자기계발',r:524,s:'23'},
+{t:'한 권으로 끝내는 해커스 토익 600+(LC+RC+VOCA)',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:525,s:'01'},
+{t:'위대한 개츠비',a:'F. 스콧 피츠제럴드',p:'민음사',c:'소설',r:526,s:'03'},
+{t:'EBS Power English (2026년 9월)',a:'크리스틴 조',p:'동아출판',c:'잡지',r:527,s:'02'},
+{t:'경계인 : AI 시대, 새로운 인재의 조건',a:'백영재',p:'세상을바꾸는시간15분',c:'자기계발',r:528,s:'19'},
+{t:'내 몸을 바꾸는 집밥테라피',a:'박용우 외',p:'루미너스',c:'요리',r:529,s:'24'},
+{t:'죽이고 싶은 아이',a:'이꽃님',p:'우리학교',c:'청소년',r:530,s:'17'},
+{t:'우린 반드시 행복해진다',a:'조성용',p:'북갈피',c:'시/에세이',r:531,s:'10'},
+{t:'지금 세계사 1',a:'최태성',p:'다산어린이',c:'어린이(초등)',r:532,s:'06'},
+{t:'주식투자를 잘한다는 것',a:'육과장',p:'노티스',c:'경제/경영',r:533,s:'02'},
+{t:'자본주의 시대에서 살아남기 위한 최소한의 경제 공부',a:'백억남(김욱현)',p:'하이스트',c:'경제/경영',r:534,s:'10'},
+{t:'원씽(The One Thing)(60만 부 기념 스페셜 에디션)',a:'게리 켈러 외',p:'비즈니스북스',c:'자기계발',r:535,s:'15'},
+{t:'오뒷세이아, 어떻게 읽을 것인가',a:'김태진',p:'민음사',c:'인문',r:536,s:'17'},
+{t:'작은 생물 도감',a:'후쿠이 사치요',p:'이은북',c:'어린이(초등)',r:537,s:'22'},
+{t:'해커스 지텔프(G-TELP) 문법 Level 2',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:538,s:'12'},
+{t:'신 퇴마록 신세편 2',a:'이우혁',p:'반타',c:'소설',r:540,s:'06'},
+{t:'긴키 지방의 어느 장소에 대하여',a:'세스지 외',p:'반타',c:'소설',r:541,s:'08'},
+{t:'내가 틀릴 수도 있습니다',a:'비욘 나티코 린데블라드',p:'다산초당',c:'인문',r:542,s:'04'},
+{t:'월든(완결판)',a:'헨리 데이빗 소로우',p:'은행나무',c:'시/에세이',r:543,s:'18'},
+{t:'듀얼 브레인',a:'이선 몰릭',p:'상상스퀘어',c:'자기계발',r:544,s:'23'},
+{t:'종의 기원',a:'정유정',p:'은행나무',c:'소설',r:545,s:'04'},
+{t:'해커스 Updated 토플 라이팅(Hackers Updated TOEFL WRITING)',a:'David Cho 외',p:'해커스어학연구소',c:'외국어',r:546,s:'24'},
+{t:'순재와 키완',a:'오하림',p:'문학동네',c:'어린이(초등)',r:547,s:'23'},
+{t:'시끌벅적 정글 사운드북',a:'샘 태플린',p:'어스본코리아',c:'유아(0~7세)',r:548,s:'01'},
+{t:'한권으로 읽는 오디세이아',a:'호메로스',p:'이화북스',c:'역사/문화',r:549,s:'12'},
+{t:'2027 해커스경찰 조현 경찰학 기본서',a:'조현',p:'해커스경찰',c:'취업/수험서',r:550,s:'20'},
+{t:'기분이 태도가 되지 않게(헬로키티 레드에디션)',a:'레몬심리',p:'갤리온',c:'시/에세이',r:551,s:'16'},
+{t:'흔한남매 과학 탐험대 18: 물질의 특성',a:'흔한남매',p:'주니어김영사',c:'어린이(초등)',r:552,s:'15'},
+{t:'해리엇',a:'한윤섭',p:'문학동네',c:'어린이(초등)',r:553,s:'14'},
+{t:'2027 이동기 영어 독해 500제 : 기출/기본/실전 문제 3-Step 학습 시스템',a:'㈜이앤미래(대표 이동기)',p:'지금',c:'취업/수험서',r:555,s:'17'},
+{t:'행복',a:'법륜',p:'정토출판',c:'시/에세이',r:556,s:'10'},
+{t:'설득의 심리학 1(20주년 기념 개정증보판)',a:'로버트 치알디니',p:'21세기북스',c:'자기계발',r:557,s:'12'},
+{t:'일 잘하는 직장인의 AI 활용법',a:'김덕중 외',p:'디지털북스',c:'컴퓨터/IT',r:558,s:'23'},
+{t:'사과가 쿵!',a:'다다 히로시',p:'보림',c:'유아(0~7세)',r:559,s:'22'},
+{t:'2026 김건호 헌법 최근 3개년 기출, 예상 헌법판례 하반기',a:'김건호',p:'박영사',c:'취업/수험서',r:560,s:'18'},
+{t:'독끝 NCS 자료해석 400제(공기업 NCS/대기업 인적성 대비 독학으로 끝내는 수리능력&자료해석 PSAT)',a:'길잡이연구소',p:'애드투',c:'취업/수험서',r:561,s:'08'},
+{t:'고양이 해결사 깜냥 9: 야구장의 영웅을 찾아라!',a:'홍민정',p:'창비',c:'어린이(초등)',r:562,s:'13'},
+{t:'부자 아빠 가난한 아빠(20주년 특별 기념판)',a:'로버트 기요사키',p:'민음인',c:'경제/경영',r:563,s:'15'},
+{t:'백년운동',a:'정선근',p:'아티잔',c:'건강',r:564,s:'08'},
+{t:'사라지는 돈, 살아남는 돈, 불어나는 돈',a:'김효진',p:'페이지2북스',c:'경제/경영',r:566,s:'05'},
+{t:'한능검 한정판',a:'문동균',p:'에스티유니타스',c:'인문',r:568,s:'23'},
+{t:'신 퇴마록 신세편 3',a:'이우혁',p:'반타',c:'소설',r:569,s:'19'},
+{t:'천만 원으로 시작해 매달 500만 원 받는 ETF 월배당머신',a:'평온 외',p:'이나우스북스',c:'경제/경영',r:570,s:'21'},
+{t:'연매장',a:'팡팡',p:'문학동네',c:'소설',r:571,s:'11'},
+{t:'부의 점프',a:'상승미소(이명로)',p:'스마트북스',c:'경제/경영',r:573,s:'08'},
+{t:'인 더 메가처치',a:'아사이 료',p:'은행나무',c:'소설',r:574,s:'01'},
+{t:'2027 해커스공무원 정윤돈 회계학 재무회계 기본서',a:'정윤돈',p:'해커스공무원',c:'취업/수험서',r:575,s:'21'},
+{t:'잘 자고 잘 먹는 아기의 시간표',a:'정재호',p:'한빛라이프',c:'가정/육아',r:576,s:'20'},
+{t:'우월한 열등감',a:'알프레드 아들러',p:'저녁달',c:'인문',r:577,s:'22'},
+{t:'쓰가루',a:'다자이 오사무',p:'민음사',c:'소설',r:578,s:'18'},
+{t:'밝은 밤',a:'최은영',p:'문학동네',c:'소설',r:579,s:'05'},
+{t:'우상의 황혼',a:'프리드리히 니체',p:'아카넷',c:'인문',r:580,s:'19'},
+{t:'2026 시대에듀 HMAT 현대자동차그룹 인적성검사 통합기본서',a:'SDC',p:'시대에듀',c:'취업/수험서',r:581,s:'15'},
+{t:'독끝 NCS 문제해결능력 자원관리능력 460제: 공기업·공사·공단 채용시험 대비 독학으로 끝내는 PSAT 세트',a:'길잡이연구소',p:'애드투',c:'취업/수험서',r:582,s:'08'},
+{t:'체리새우: 비밀글입니다',a:'황영미',p:'문학동네',c:'청소년',r:583,s:'13'},
+{t:'The Scent of Page : 차량용 방향제 리필',a:'교보문고',p:'교보문고',c:'책향',r:584,s:'03'},
+{t:'2027 이동기 공무원 VOCA',a:'이앤미래',p:'지금',c:'취업/수험서',r:585,s:'20'},
+{t:'무염·저염 하나로 끝내는 베이스 유아식',a:'애플랜(김애정)',p:'길벗',c:'요리',r:586,s:'16'},
+{t:'불행에 몰두하지 않는다',a:'정지우',p:'페이지2북스',c:'시/에세이',r:587,s:'21'},
+{t:'돌이킬 수 있는',a:'문목하',p:'아작',c:'소설',r:588,s:'17'},
+{t:'2027 유휘운 행정법총론 기출문제 풀어주는 기본서(기풀기) 세트',a:'유휘운',p:'모두공북스',c:'취업/수험서',r:589,s:'13'},
+{t:'염승환의 ETF 완전 정복',a:'염승환',p:'한스미디어',c:'경제/경영',r:590,s:'03'},
+{t:'삼원소 영문법',a:'장수경',p:'삼원소어학연구소',c:'외국어',r:591,s:'14'},
+{t:'참을 수 없는 존재의 가벼움',a:'밀란 쿤데라',p:'민음사',c:'소설',r:592,s:'22'},
+{t:'뇌는 어떻게 나를 조종하는가',a:'크리스 나이바우어',p:'클랩북스',c:'과학',r:594,s:'13'},
+{t:'너를 미워할 시간에 나를 사랑하기로 했다',a:'윤서진',p:'스몰빅라이프',c:'자기계발',r:595,s:'18'},
+{t:'JLPT 최신 기출 유형 실전모의고사 N2',a:'Aj Online Test',p:'시원스쿨닷컴',c:'외국어',r:596,s:'05'},
+{t:'라오어의 미국주식 밸류 리밸런싱',a:'라오어',p:'알키',c:'경제/경영',r:597,s:'19'},
+{t:'아가미(애니메이션 더블 커버)',a:'구병모',p:'위즈덤하우스',c:'소설',r:598,s:'24'},
+{t:'해커스 Updated 토플 스피킹(Hackers Updated TOEFL Speaking)',a:'David Cho 외',p:'해커스어학연구소',c:'외국어',r:600,s:'21'},
+{t:'JLPT 최신 기출 유형 실전모의고사 N1',a:'Aj Online Test',p:'시원스쿨닷컴',c:'외국어',r:601,s:'20'},
+{t:'백야행 1',a:'히가시노 게이고',p:'재인',c:'소설',r:602,s:'22'},
+{t:'사업의 철학(10주년 기념판)',a:'마이클 거버',p:'라이팅하우스',c:'경제/경영',r:603,s:'15'},
+{t:'해커스 토익 스타트 RC Reading (리딩) 입문서',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:604,s:'17'},
+{t:'일본어 문법 무작정 따라하기',a:'후지이 아사리',p:'길벗이지톡',c:'외국어',r:605,s:'04'},
+{t:'로봇 소년, 학교에 가다',a:'톰 앵글버거 외',p:'미래인',c:'청소년',r:606,s:'06'},
+{t:'The Scent of Page : 디퓨저 300ML',a:'교보문고',p:'교보문고',c:'책향',r:607,s:'14'},
+{t:'헝거 게임: 50번째 추첨의 날',a:'수잔 콜린스',p:'북폴리오',c:'소설',r:608,s:'10'},
+{t:'해커스 JLPT N2(일본어능력시험) 한권합격',a:'해커스 JLPT 연구소',p:'해커스어학연구소',c:'외국어',r:609,s:'18'},
+{t:'할머니의 여름휴가',a:'안녕달',p:'창비',c:'유아(0~7세)',r:610,s:'02'},
+{t:'페스트',a:'알베르 카뮈',p:'민음사',c:'소설',r:611,s:'16'},
+{t:'어른의 품위',a:'최서영',p:'북로망스',c:'시/에세이',r:612,s:'09'},
+{t:'멋진 신세계',a:'올더스 헉슬리',p:'소담출판사',c:'소설',r:613,s:'17'},
+{t:'피로사회',a:'한병철',p:'문학과지성사',c:'인문',r:614,s:'19'},
+{t:'마루는 강쥐 9(완결)',a:'모죠',p:'문페이스',c:'만화',r:615,s:'03'},
+{t:'해커스 토익 최신기출유형 실전 10회 RC(리딩) (모의고사+해설집)',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:616,s:'17'},
+{t:'수박 수영장',a:'안녕달',p:'창비',c:'유아(0~7세)',r:617,s:'01'},
+{t:'헤르만 헤세의 게으름의 기술',a:'헤르만 헤세 외',p:'뜨인돌출판사',c:'인문',r:618,s:'12'},
+{t:'패밀리 레스토랑 가자(하)(완결)',a:'와야마 야마',p:'문학동네',c:'만화',r:619,s:'05'},
+{t:'2026 시나공 컴퓨터활용능력 1급 필기 기출문제집',a:'길벗알앤디',p:'길벗',c:'컴퓨터/IT',r:620,s:'19'},
+{t:'전수환 객관식 경영학 2900제',a:'전수환',p:'밀더북',c:'취업/수험서',r:621,s:'18'},
+{t:'창조적 행위: 존재의 방식',a:'릭 루빈',p:'코쿤북스',c:'예술/대중문화',r:622,s:'17'},
+{t:'추추의 집밥 클래스',a:'추재현',p:'용감한 까치',c:'요리',r:623,s:'13'},
+{t:'제17회 젊은작가상 수상작품집(2026)',a:'김채원 외',p:'문학동네',c:'소설',r:624,s:'09'},
+{t:'파리대왕',a:'윌리엄 골딩',p:'문예출판사',c:'소설',r:625,s:'11'},
+{t:'가면산장 살인사건',a:'히가시노 게이고',p:'재인',c:'소설',r:626,s:'10'},
+{t:'리치먼드힐의 이층 버스',a:'이경진',p:'북플레저',c:'소설',r:627,s:'03'},
+{t:'읽으면서 바로 써먹는 어린이 낱말퍼즐',a:'한날',p:'파란정원',c:'어린이(초등)',r:628,s:'11'},
+{t:'EBS 귀가 트이는 영어 (2026년 9월)',a:'이현석',p:'동아출판',c:'잡지',r:629,s:'07'},
+{t:'간결한 식탁 레시피',a:'간결한 식탁(이해나)',p:'래디시',c:'요리',r:630,s:'21'},
+{t:'최소한의 습관',a:'로버트 마우어',p:'북모먼트',c:'자기계발',r:631,s:'20'},
+{t:'거꾸로 읽는 세계사',a:'유시민',p:'돌베개',c:'역사/문화',r:632,s:'13'},
+{t:'죄와 벌 1',a:'도스토예프스키',p:'민음사',c:'소설',r:633,s:'09'},
+{t:'매일성경 개역개정(2026년 9/10월호)',a:'성서유니온 편집부',p:'성서유니온',c:'잡지',r:634,s:'20'},
+{t:'2026 독끝 금융&은행NCS 피듈형 333제(PSAT+금융특화 응용모듈)',a:'길잡이연구소 외',p:'애드투',c:'취업/수험서',r:635,s:'10'},
+{t:'손절사회',a:'이승연',p:'어크로스',c:'정치/사회',r:636,s:'03'},
+{t:'가공범',a:'히가시노 게이고',p:'북다',c:'소설',r:637,s:'08'},
+{t:'경험의 멸종',a:'크리스틴 로젠',p:'어크로스',c:'인문',r:638,s:'01'},
+{t:'백야',a:'표도르 도스토옙스키',p:'문학동네',c:'소설',r:639,s:'21'},
+{t:'모모세 아키라의 첫사랑 파탄 중 6',a:'Shinta Harekawa',p:'서울미디어코믹스(서울문화사)',c:'만화',r:640,s:'08'},
+{t:'기억 전달자',a:'로이스 로리',p:'비룡소',c:'청소년',r:641,s:'01'},
+{t:'Grammar in Use Intermediate Student\'s Book with Answers',a:'Murphy, Raymond',p:'Cambridge University Press',c:'ELT/수험서',r:642,s:'12'},
+{t:'죽음의 수용소 이후',a:'빅터 프랭클',p:'북하우스',c:'인문',r:643,s:'05'},
+{t:'알사탕',a:'백희나',p:'스토리보울',c:'유아(0~7세)',r:644,s:'16'},
+{t:'수레바퀴 아래서',a:'헤르만 헤세',p:'민음사',c:'소설',r:645,s:'15'},
+{t:'모두가 자신의 믿음 없음과 싸우고 있다',a:'존 파이퍼',p:'두란노서원',c:'종교',r:646,s:'14'},
+{t:'싯다르타(초판본)(1922년 오리지널 초판본 표지디자인)',a:'헤르만 헤세',p:'더스토리',c:'소설',r:648,s:'11'},
+{t:'클라라와 태양',a:'가즈오 이시구로',p:'민음사',c:'소설',r:649,s:'19'},
+{t:'2026 경찰2차시험대비 합격이 개쉬운 경찰모의고사(봉투)',a:'갓대환형사법연구실 외',p:'멘토링',c:'취업/수험서',r:650,s:'06'},
+{t:'2026 이기적 컴퓨터활용능력 2급 필기+실기 올인원',a:'홍태성 외',p:'영진닷컴',c:'컴퓨터/IT',r:651,s:'05'},
+{t:'영어로 문장 만들기 훈련 1차 임계점',a:'유은하',p:'사람in',c:'외국어',r:652,s:'10'},
+{t:'넥서스',a:'유발 하라리',p:'김영사',c:'인문',r:653,s:'15'},
+{t:'GACHIAKUTA 18(한정판)',a:'Kei Urana',p:'학산문화사',c:'만화',r:654,s:'20'},
+{t:'드라큘라',a:'브램 스토커',p:'열린책들',c:'소설',r:655,s:'10'},
+{t:'위대한 나의 발견 강점혁명',a:'갤럽 프레스 외',p:'청림출판',c:'자기계발',r:656,s:'24'},
+{t:'타이탄의 도구들',a:'팀 페리스',p:'토네이도',c:'자기계발',r:657,s:'14'},
+{t:'KBS한국어능력시험 공식 기출문제집 2026 상반기 제91, 90, 89회',a:'KBS한국어진흥원',p:'해커스자격증',c:'인문',r:658,s:'01'},
+{t:'지적 대화를 위한 넓고 얕은 지식 1',a:'채사장',p:'웨일북(whalebooks)',c:'인문',r:659,s:'18'},
+{t:'백야행 2',a:'히가시노 게이고',p:'재인',c:'소설',r:660,s:'05'},
+{t:'슈퍼 뒤에서 담배 피우는 두 사람 8',a:'지누시',p:'디앤씨미디어',c:'만화',r:661,s:'10'},
+{t:'비만록: 나는 마운자로를 맞는 의사다',a:'장형우',p:'아침사과',c:'건강',r:662,s:'18'},
+{t:'옆자리 녀석이 그런 눈으로 쳐다본다 4',a:'mmk',p:'학산문화사',c:'만화',r:664,s:'12'},
+{t:'스타트 잉글리시(EBS 방송교재 2026년 9월호)',a:'동아출판 편집부',p:'동아출판',c:'외국어',r:665,s:'17'},
+{t:'2026 해커스 투자자산운용사 한권합격 핵심개념+적중문제+공식노트',a:'백영 외',p:'해커스금융',c:'취업/수험서',r:666,s:'01'},
+{t:'박태웅의 AI 강의 2026',a:'박태웅',p:'한빛비즈',c:'경제/경영',r:667,s:'18'},
+{t:'어서 오세요, 휴남동 서점입니다',a:'황보름',p:'클레이하우스',c:'소설',r:668,s:'08'},
+{t:'우리는 매일 각자의 오디세이아를 쓴다',a:'호메로스',p:'클래시카',c:'인문',r:669,s:'01'},
+{t:'슈뻘맨의 슈퍼 상식 월드컵 6: 최강의 수중 동물',a:'슈뻘맨',p:'주니어김영사',c:'어린이(초등)',r:670,s:'06'},
+{t:'진보를 위한 현대사 수업',a:'배기성',p:'자크드앙',c:'역사/문화',r:671,s:'20'},
+{t:'서아쌤의 지텔프 비밀과외 32-65+',a:'최서아 외',p:'시원스쿨닷컴',c:'외국어',r:672,s:'01'},
+{t:'거꾸로 가는 하나님 나라',a:'김지희',p:'햇살콩',c:'종교',r:673,s:'12'},
+{t:'AI 시대 어떻게 일할 것인가',a:'최동원',p:'상상스퀘어',c:'자기계발',r:675,s:'12'},
+{t:'부처의 감정 수업',a:'자현',p:'오아시스',c:'자기계발',r:676,s:'23'},
+{t:'단 3개의 미국 ETF로 은퇴하라',a:'김지훈(포메뽀꼬)',p:'리더스북',c:'경제/경영',r:678,s:'17'},
+{t:'만화로 보는 5분 한국사',a:'유요',p:'빅피시',c:'어린이(초등)',r:679,s:'10'},
+{t:'2027 황철곤 행정학 기출문제집 세트',a:'황철곤',p:'모두공북스',c:'취업/수험서',r:681,s:'01'},
+{t:'마법천자문 71: 승패를 가른다! 승부',a:'알에스미디어',p:'아울북',c:'어린이(초등)',r:682,s:'09'},
+{t:'오십에 읽는 주역',a:'강기진',p:'유노북스',c:'인문',r:683,s:'05'},
+{t:'자기 앞의 생',a:'에밀 아자르',p:'문학동네',c:'소설',r:684,s:'07'},
+{t:'진짜 쓰는 실무 엑셀',a:'오빠두(전진권)',p:'제이펍',c:'컴퓨터/IT',r:685,s:'03'},
+{t:'두드려 보아요',a:'안나 클라라 티돌름',p:'사계절',c:'유아(0~7세)',r:686,s:'23'},
+{t:'인플레이션은 누구를 부자로 만드는가',a:'신환종',p:'포레스트북스',c:'경제/경영',r:687,s:'19'},
+{t:'인생의 짧음에 대하여',a:'루키우스 안나이우스 세네카',p:'현대지성',c:'인문',r:688,s:'03'},
+{t:'Project Hail Mary',a:'Weir, Andy',p:'Ballantine Books',c:'문학',r:689,s:'05'},
+{t:'데일 카네기 자기관리론(국내최초 초판 무삭제 완역본)',a:'데일 카네기',p:'현대지성',c:'자기계발',r:690,s:'01'},
+{t:'섬뜩한 코바늘',a:'에런 레이놀즈',p:'토토북',c:'어린이(초등)',r:691,s:'15'},
+{t:'흔한남매 과학 탐험대 17: 뇌와 호르몬',a:'김언정',p:'주니어김영사',c:'어린이(초등)',r:692,s:'20'},
+{t:'아티스트 웨이',a:'줄리아 캐머런',p:'위즈덤하우스',c:'자기계발',r:693,s:'07'},
+{t:'리얼 상하이: 항저우 쑤저우(2026~2027)',a:'이창환 외',p:'한빛라이프',c:'여행',r:694,s:'24'},
+{t:'생존 지능',a:'로이드 블랭크파인',p:'필름(Feelm)',c:'자기계발',r:695,s:'17'},
+{t:'2026 해커스경찰 갓대환 형사법 기출총정리 세트',a:'김대환',p:'해커스경찰',c:'취업/수험서',r:696,s:'19'},
+{t:'한 말씀만 하소서',a:'박완서',p:'세계사',c:'시/에세이',r:697,s:'21'},
+{t:'사서함 110호의 우편물',a:'이도우',p:'수박설탕',c:'소설',r:698,s:'17'},
+{t:'흔한남매 방방곡곡 한국사 1',a:'흔한남매',p:'미래엔아이세움',c:'어린이(초등)',r:700,s:'14'},
+{t:'현명한 투자자',a:'벤저민 그레이엄',p:'국일증권경제연구소',c:'경제/경영',r:701,s:'22'},
+{t:'룩 백',a:'Tatsuki Fujimoto',p:'학산문화사',c:'만화',r:702,s:'18'},
+{t:'집밥력',a:'홀썸모먼트',p:'세미콜론',c:'요리',r:705,s:'16'},
+{t:'두고 온 여름',a:'성해나',p:'창비',c:'소설',r:706,s:'12'},
+{t:'부자들은 절대 속지 않는 돈의 함정',a:'셰종보',p:'더페이지',c:'자기계발',r:707,s:'08'},
+{t:'영어책 한 권 외워봤니? 뉴 에디션',a:'김민식',p:'위즈덤하우스',c:'자기계발',r:708,s:'16'},
+{t:'2026 해커스 20대기업 인적성 통합 기본서 최신기출유형+실전문제',a:'해커스 취업교육연구소',p:'해커스잡',c:'취업/수험서',r:709,s:'06'},
+{t:'해커스 토익 스타트 LC Listening (리스닝) 입문서',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:710,s:'02'},
+{t:'읽으면 수학천재가 되는 만화책: 초등 B',a:'Team. StoryG',p:'Oldstairs(올드스테어즈)',c:'어린이(초등)',r:711,s:'01'},
+{t:'중고생이 꼭 읽어야 할 한국단편소설 50',a:'성낙수 외',p:'리베르스쿨',c:'청소년',r:712,s:'09'},
+{t:'서울의 선인',a:'김호연',p:'위즈덤하우스',c:'소설',r:713,s:'17'},
+{t:'JLPT(일본어능력시험) 한권으로 끝내기 N4',a:'이치우 외',p:'다락원',c:'외국어',r:714,s:'10'},
+{t:'시험 문해력 잡는 어휘 사전',a:'김주혜',p:'21세기북스',c:'청소년',r:715,s:'12'},
+{t:'나는 메트로폴리탄 미술관의 경비원입니다',a:'패트릭 브링리',p:'웅진지식하우스',c:'시/에세이',r:716,s:'14'},
+{t:'레버리지',a:'롭 무어',p:'다산북스',c:'경제/경영',r:717,s:'19'},
+{t:'뚱뚱한 고양이가 매트 위에 앉아 있어요',a:'누릿 칼린',p:'포레스트북스',c:'유아(0~7세)',r:718,s:'06'},
+{t:'10일 만에 끝내는 해커스 토익스피킹(토스)',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:719,s:'23'},
+{t:'독끝 NCS 응용수리 500제(공기업 NCS/대기업 인적성 대비 독학으로 끝내는 수리능력·응용수리)',a:'길잡이연구소',p:'애드투',c:'취업/수험서',r:720,s:'04'},
+{t:'영어 문장 늘리기 훈련',a:'지정연',p:'길벗이지톡',c:'외국어',r:721,s:'03'},
+{t:'클로드 에이전트 협업의 기술',a:'김승권',p:'한빛미디어',c:'컴퓨터/IT',r:722,s:'20'},
+{t:'읽지 않는 사람들',a:'나오미 배런',p:'웅진지식하우스',c:'인문',r:723,s:'10'},
+{t:'김약국의 딸들(한국문학의 거장 박경리 탄생 100주년 기념 특별판)',a:'박경리',p:'다산책방',c:'소설',r:724,s:'06'},
+{t:'하루 한 장 나의 어휘력을 위한 필사 노트',a:'유선경',p:'위즈덤하우스',c:'인문',r:725,s:'20'},
+{t:'그라시안의 사람을 읽는 눈',a:'김철',p:'히읏',c:'인문',r:726,s:'01'},
+{t:'마흔에 읽는 쇼펜하우어',a:'강용수',p:'유노북스',c:'인문',r:727,s:'03'},
+{t:'해커스 일본어 첫걸음 히라가나 가타카나 쓰기노트',a:'해커스 일본어연구소',p:'해커스어학연구소',c:'외국어',r:728,s:'05'},
+{t:'초조한 마음',a:'슈테판 츠바이크',p:'문학과지성사',c:'소설',r:729,s:'01'},
+{t:'젊은 베르테르의 슬픔',a:'요한 볼프강 폰 괴테',p:'민음사',c:'소설',r:730,s:'24'},
+{t:'황천의 츠가이 11',a:'Hiromu Arakawa',p:'대원씨아이',c:'만화',r:731,s:'05'},
+{t:'스티커',a:'김선미',p:'다산책방',c:'청소년',r:732,s:'16'},
+{t:'독끝 NCS 의사소통능력 200제: 공기업 NCS & PSAT 대비',a:'길잡이연구소 외',p:'애드투',c:'취업/수험서',r:733,s:'06'},
+{t:'처음 읽는 삼국지 3: 격변의 시대',a:'이문열',p:'미래엔아이세움',c:'어린이(초등)',r:734,s:'08'},
+{t:'해커스 중국어 HSK 4급 한 권으로 합격 기본서 + 실전모의고사 + 핵심어휘집',a:'해커스 HSK연구소',p:'해커스',c:'외국어',r:735,s:'19'},
+{t:'내면소통',a:'김주환',p:'인플루엔셜',c:'인문',r:736,s:'03'},
+{t:'프린세스 캐치! 티니핑 마음을 가꾸는 동화 10: 다시 열린 프린세스 회담',a:'SAMG',p:'아이휴먼',c:'유아(0~7세)',r:738,s:'09'},
+{t:'EBS 초급 일본어 (2026년 9월)',a:'이은미',p:'동아출판',c:'잡지',r:739,s:'05'},
+{t:'시뮬레이션 우주',a:'박권',p:'동아시아',c:'과학',r:740,s:'22'},
+{t:'2026 국가공인 재경관리사 기출문제집',a:'삼일회계법인',p:'삼일인포마인',c:'취업/수험서',r:741,s:'21'},
+{t:'팀 켈러, 죄를 말하다(한정판)',a:'팀 켈러',p:'두란노',c:'종교',r:742,s:'17'},
+{t:'오늘내일하는 사이',a:'임봉근 외',p:'안온북스',c:'시/에세이',r:743,s:'01'},
+{t:'우리의 낙원에서 만나자',a:'하태완',p:'북로망스',c:'시/에세이',r:744,s:'18'},
+{t:'폭풍의 언덕',a:'에밀리 브론테',p:'민음사',c:'소설',r:745,s:'08'},
+{t:'진지인 다이어트 밀프렙 레시피',a:'김지인(진지인)',p:'길벗',c:'요리',r:747,s:'05'},
+{t:'우리는 언제나 다시 만나',a:'윤여림',p:'위즈덤하우스',c:'유아(0~7세)',r:748,s:'04'},
+{t:'달님 안녕',a:'하야시 아키코',p:'한림출판사',c:'유아(0~7세)',r:749,s:'12'},
+{t:'GACHIAKUTA 18',a:'Kei Urana',p:'학산문화사',c:'만화',r:750,s:'20'},
+{t:'필연적 혼자의 시대',a:'김수영',p:'다산북스',c:'정치/사회',r:751,s:'19'},
+{t:'해커스 지텔프(G-TELP) 독해 Level 2',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:752,s:'03'},
+{t:'해커스일본어 JLPT N5(일본어능력시험) 한 권으로 합격',a:'해커스 JLPT 연구소',p:'해커스어학연구소',c:'외국어',r:753,s:'05'},
+{t:'일본어 상용한자 무작정 따라하기 1',a:'권경배',p:'길벗이지톡',c:'외국어',r:754,s:'22'},
+{t:'불편함을 다룰 줄 아는 아이',a:'최재희',p:'청림라이프',c:'가정/육아',r:756,s:'01'},
+{t:'나는 니체를 필사한다',a:'프리드리히 니체',p:'세렌디피티북스',c:'인문',r:757,s:'21'},
+{t:'폰더 씨의 위대한 하루',a:'앤디 앤드루스',p:'세종서적',c:'소설',r:758,s:'08'},
+{t:'역행자(확장판)',a:'자청',p:'웅진지식하우스',c:'자기계발',r:759,s:'04'},
+{t:'에티의 여름',a:'루시 스티즈',p:'다산책방',c:'소설',r:760,s:'06'},
+{t:'책이라면 팔 만큼 1(특장판)',a:'코지마 아오',p:'대원씨아이',c:'만화',r:761,s:'20'},
+{t:'화성에 도시를 세운다면',a:'잭 와이너스미스 외',p:'알에이치코리아',c:'과학',r:762,s:'16'},
+{t:'켈리지텔프 G-POINT 33: 문법편',a:'켈리',p:'멘토링',c:'외국어',r:763,s:'03'},
+{t:'캔들차트 하나로 끝내는 추세추종 투자',a:'성승현',p:'포르체',c:'경제/경영',r:764,s:'08'},
+{t:'50 대 50',a:'S. L. 파월',p:'라임',c:'청소년',r:765,s:'01'},
+{t:'황천의 츠가이 12',a:'Hiromu Arakawa',p:'대원씨아이',c:'만화',r:769,s:'15'},
+{t:'내가 죽였다',a:'정해연',p:'반타',c:'소설',r:770,s:'11'},
+{t:'궤도',a:'서맨사 하비',p:'서해문집',c:'소설',r:771,s:'07'},
+{t:'20일 만에 끝내는 해커스 토익 750+ RC(리딩)',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:772,s:'24'},
+{t:'이, 한 권의 시집',a:'나태주',p:'샘터(샘터사)',c:'시/에세이',r:773,s:'23'},
+{t:'설민석의 한국사 대모험 37',a:'설민석 외',p:'단꿈아이',c:'어린이(초등)',r:774,s:'22'},
+{t:'사피엔스(양장 특별판)',a:'유발 하라리',p:'김영사',c:'인문',r:775,s:'21'},
+{t:'The Scent of Page : 핸드크림 50ML',a:'교보문고',p:'교보문고',c:'책향',r:776,s:'08'},
+{t:'EBS Easy Writing (2026년 9월)',a:'마스터유진',p:'동아출판',c:'잡지',r:777,s:'10'},
+{t:'2027 에듀윌 KBS한국어능력시험 한권끝장+무료특강',a:'송주연 외',p:'에듀윌',c:'인문',r:778,s:'24'},
+{t:'2026 시나공 컴퓨터활용능력 2급 필기 기출문제집',a:'길벗알앤디',p:'길벗',c:'컴퓨터/IT',r:779,s:'05'},
+{t:'계화의 여름',a:'배명은',p:'위즈덤하우스',c:'소설',r:780,s:'19'},
+{t:'살',a:'데이비드 솔로이',p:'서해문집',c:'소설',r:782,s:'19'},
+{t:'해커스일본어 JLPT N4(일본어능력시험) 한 권으로 합격',a:'해커스 JLPT 연구소',p:'해커스어학연구소',c:'외국어',r:783,s:'24'},
+{t:'나민애의 국어 대모험 1',a:'나민애',p:'겜툰',c:'어린이(초등)',r:784,s:'23'},
+{t:'소맥거핀의 인체 친구들 7: 콰르르릉 역대급 장 트러블!',a:'소맥거핀',p:'위즈덤하우스',c:'어린이(초등)',r:785,s:'13'},
+{t:'해커스 토익 최신기출유형 실전 10회 LC(리스닝)(모의고사+해설집)',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:786,s:'18'},
+{t:'해커스 여행 일본어 10분의 기적',a:'해커스 일본어연구소',p:'해커스어학연구소',c:'외국어',r:787,s:'14'},
+{t:'사는 동안 틈틈이 행복합시다',a:'박근호',p:'히읏',c:'시/에세이',r:788,s:'13'},
+{t:'이중 하나는 거짓말',a:'김애란',p:'문학동네',c:'소설',r:789,s:'06'},
+{t:'Basic Grammar in Use with Answers',a:'Raymond Murphy 외',p:'Cambridge',c:'인문/사회',r:790,s:'11'},
+{t:'카라마조프가의 형제들 세트',a:'표도로 도스토예프스키',p:'민음사',c:'소설',r:791,s:'10'},
+{t:'2027 해커스공무원 현 행정학 기본서 세트',a:'서현 외',p:'해커스공무원',c:'취업/수험서',r:792,s:'24'},
+{t:'제니쌤의 오픽 편의점',a:'제니 외',p:'시원스쿨닷컴',c:'외국어',r:793,s:'17'},
+{t:'그래머 게이트웨이 인터미디엇: 영어가 쉬워지는 기초 영문법 (Grammar Gateway Intermediate)',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:794,s:'13'},
+{t:'안과 겉·결혼·여름',a:'알베르 카뮈',p:'민음사',c:'소설',r:795,s:'06'},
+{t:'모모(출간 50주년 기념 개정판)',a:'미하엘 엔데',p:'비룡소',c:'청소년',r:796,s:'14'},
+{t:'페인트',a:'이희영',p:'창비',c:'청소년',r:797,s:'01'},
+{t:'프랑켄슈타인',a:'메리 W. 셸리',p:'열린책들',c:'소설',r:798,s:'18'},
+{t:'귀신나방',a:'장용민',p:'재담',c:'소설',r:799,s:'20'},
+{t:'나를 살리는 음식들',a:'선재 스님',p:'나무의마음',c:'시/에세이',r:800,s:'22'},
+{t:'김수연의 아기발달백과',a:'김수연',p:'삼인',c:'가정/육아',r:801,s:'09'},
+{t:'시바시바 공부하는 일본어',a:'쿠리코 외',p:'파고다북스',c:'외국어',r:802,s:'23'},
+{t:'칵테일, 러브, 좀비 (리커버)',a:'조예은',p:'안전가옥',c:'소설',r:803,s:'19'},
+{t:'초역 니체의 말',a:'프리드리히 니체',p:'삼호미디어',c:'인문',r:804,s:'24'},
+{t:'온라인 건물주의 정석 기본편',a:'김지수',p:'모티브',c:'경제/경영',r:807,s:'19'},
+{t:'처음 읽는 삼국지 2: 혼돈에 맞선 자들',a:'이문열',p:'미래엔아이세움',c:'어린이(초등)',r:808,s:'24'},
+{t:'아주 희미한 빛으로도',a:'최은영',p:'문학동네',c:'소설',r:809,s:'23'},
+{t:'초등영문법 777 1',a:'마더텅 편집부',p:'마더텅',c:'외국어',r:810,s:'07'},
+{t:'의사 어벤저스 28: 중독, 고통에서 벗어나라!',a:'고희정',p:'가나출판사',c:'어린이(초등)',r:812,s:'19'},
+{t:'생명의 삶 개역개정 (2026년 9월)',a:'두란노 편집부',p:'두란노서원',c:'잡지',r:813,s:'12'},
+{t:'수염 탐정 로빈 3: 에러 코드 300',a:'로빈',p:'대원키즈',c:'어린이(초등)',r:814,s:'20'},
+{t:'관계의 그릇',a:'이헌주',p:'위즈덤하우스',c:'인문',r:815,s:'07'},
+{t:'사카모토 데이즈 26: 원정',a:'Yuto Suzuki',p:'대원씨아이',c:'만화',r:816,s:'18'},
+{t:'저스트킵바잉',a:'닉 매기울리',p:'서삼독',c:'경제/경영',r:817,s:'23'},
+{t:'넛지(파이널 에디션)',a:'리처드 탈러 외',p:'리더스북',c:'경제/경영',r:818,s:'22'},
+{t:'피터 린치의 투자 이야기',a:'피터 린치 외',p:'흐름출판',c:'경제/경영',r:819,s:'12'},
+{t:'Again! 뒤집어본 영문법',a:'오성호',p:'김영사',c:'외국어',r:820,s:'02'},
+{t:'운명의 사람을 만나는 이야기 8',a:'Anashin',p:'학산문화사',c:'만화',r:821,s:'16'},
+{t:'이지패스 2026 SQLD SQL 개발자',a:'전용문',p:'위키북스',c:'컴퓨터/IT',r:822,s:'15'},
+{t:'나는 나로 살기로 했다(영미권 출간기념 특별판)',a:'김수현',p:'클레이하우스',c:'시/에세이',r:823,s:'11'},
+{t:'공부 천재들의 남다른 AI 활용법',a:'이보미',p:'미디어숲',c:'청소년',r:825,s:'02'},
+{t:'원큐패스 11일에 완성하는 서경석의 다이어트 한국사능력검정시험 심화(1·2·3급)',a:'서경석',p:'다락원',c:'인문',r:826,s:'19'},
+{t:'비스킷',a:'김선미',p:'위즈덤하우스',c:'청소년',r:827,s:'21'},
+{t:'모리와 함께한 화요일',a:'미치 앨봄',p:'살림',c:'시/에세이',r:828,s:'05'},
+{t:'우리는 여름을 쓰기로 했다',a:'에밀리 헨리 외',p:'윌북',c:'소설',r:829,s:'22'},
+{t:'2026 고시넷 한국산업인력공단 6급 NCS+한국사+영어 기출예상모의고사 5회',a:'고시넷 NCS 연구소',p:'고시넷',c:'취업/수험서',r:830,s:'21'},
+{t:'인간을 인간답게 만드는 불완전함에 대하여',a:'팀 하포드',p:'윌마',c:'인문',r:831,s:'14'},
+{t:'2027 해커스 홍대겸 행정법총론 기본서',a:'홍대겸',p:'해커스공무원',c:'취업/수험서',r:832,s:'22'},
+{t:'만능문장으로 끝내는토익스피킹 실전 모의고사 25회',a:'시계토끼제니쌤',p:'시계토끼',c:'외국어',r:833,s:'21'},
+{t:'청춘의 독서(특별증보판)',a:'유시민',p:'웅진지식하우스',c:'인문',r:834,s:'11'},
+{t:'처음 읽는 삼국지 1: 영웅과의 만남',a:'이문열',p:'미래엔아이세움',c:'어린이(초등)',r:835,s:'16'},
+{t:'와일드',a:'셰릴 스트레이드',p:'페이지2북스',c:'시/에세이',r:836,s:'21'},
+{t:'죄와 벌 2',a:'도스토예프스키',p:'민음사',c:'소설',r:837,s:'14'},
+{t:'영어 순해',a:'김영로',p:'넥서스',c:'외국어',r:838,s:'19'},
+{t:'에이든 일본 여행 도감 100',a:'이정기 외',p:'타블라라사',c:'여행',r:841,s:'02'},
+{t:'공부가 즐겁다는 공자의 말을 믿어도 될까',a:'판덩',p:'이든서재',c:'청소년',r:842,s:'04'},
+{t:'JLPT(일본어능력시험) 한권으로 끝내기 N5',a:'이치우 외',p:'다락원',c:'외국어',r:843,s:'21'},
+{t:'2026 해커스 무역영어 1급 4주 합격 이론+기출문제 19회분',a:'진민규 외',p:'해커스금융',c:'취업/수험서',r:844,s:'11'},
+{t:'달러구트 꿈 백화점 (200만부 기념 합본호 : 아메리칸드림 에디션)',a:'이미예',p:'팩토리나인',c:'소설',r:845,s:'04'},
+{t:'해커스 토익 왕기초 RC Reading (리딩)',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:846,s:'24'},
+{t:'멜로우TV 5: 멜당탕탕 빌런의 등장',a:'멜로우TV',p:'학산문화사',c:'어린이(초등)',r:847,s:'14'},
+{t:'압도적 스킬로 바로 쓰는 클로드 코워크×AI 자동화',a:'강다솔 외',p:'프리렉',c:'컴퓨터/IT',r:848,s:'22'},
+{t:'파과',a:'구병모',p:'위즈덤하우스',c:'소설',r:849,s:'24'},
+{t:'천년의 사랑',a:'양귀자',p:'쓰다',c:'소설',r:850,s:'20'},
+{t:'보라특강 - 김미경',a:'김미경',p:'',c:'강연',r:852,s:'23'},
+{t:'에드거 앨런 포 단편선',a:'에드거 앨런 포',p:'열린책들',c:'소설',r:854,s:'20'},
+{t:'목소리가 들린다',a:'최정원',p:'창비',c:'소설',r:855,s:'16'},
+{t:'EBS 입이 트이는 영어 (2026년 8월)',a:'이현석',p:'동아출판',c:'잡지',r:856,s:'24'},
+{t:'믿음이 넘어진 자리',a:'원유경',p:'규장',c:'종교',r:857,s:'14'},
+{t:'2027 해커스경찰 신동욱 경찰헌법 기출문제집',a:'신동욱',p:'해커스경찰',c:'취업/수험서',r:858,s:'19'},
+{t:'열다섯에 곰이라니',a:'추정경',p:'다산책방',c:'청소년',r:859,s:'03'},
+{t:'손끝과 연연 13',a:'suu Morishita',p:'학산문화사',c:'만화',r:861,s:'18'},
+{t:'2026 해커스 신용분석사 1부 한권합격 이론+적중문제+모의고사',a:'정윤돈',p:'해커스금융',c:'취업/수험서',r:862,s:'08'},
+{t:'파도가 사랑을 말하는 순간에(리커버 에디션)',a:'김바다',p:'부크크(Bookk)',c:'소설',r:863,s:'07'},
+{t:'20일 만에 끝내는 해커스 토익 750+ LC(리스닝)',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:864,s:'09'},
+{t:'그릿(50만부 판매 기념 리커버 골드에디션)',a:'앤절라 더크워스',p:'비즈니스북스',c:'자기계발',r:865,s:'23'},
+{t:'즉시 매출 올리는 사장님의 실전 AI',a:'정진수',p:'나비의활주로',c:'경제/경영',r:866,s:'19'},
+{t:'2026 공단기 써니 행정법각론 기출문제집',a:'박준철',p:'에스티유니타스',c:'취업/수험서',r:867,s:'12'},
+{t:'매일성경 순(2026년 9/10월호)',a:'성서유니온 편집부',p:'성서유니온',c:'잡지',r:868,s:'11'},
+{t:'원피스 113: 로키탄생',a:'Eiichiro Oda',p:'대원씨아이',c:'만화',r:869,s:'22'},
+{t:'지구가 너무도 사나운 날에는',a:'가치를꿈꾸는과학교사모임',p:'우리학교',c:'청소년',r:870,s:'12'},
+{t:'소년과 두더지와 여우와 말',a:'찰리 맥커시',p:'상상의힘',c:'시/에세이',r:871,s:'17'},
+{t:'왕좌 전쟁',a:'김병삼',p:'두란노서원',c:'종교',r:873,s:'05'},
+{t:'윈드 브레이커 15~16권 세트',a:'니이 사토루',p:'리디',c:'만화',r:874,s:'01'},
+{t:'AI가 두려운 당신에게',a:'배경훈 외',p:'한빛미디어',c:'경제/경영',r:875,s:'18'},
+{t:'몰입',a:'이근오',p:'운화',c:'인문',r:876,s:'20'},
+{t:'2026 직8딴 김영북스 직접 8일 만에 딴 산업안전기사 실기',a:'김진태',p:'김영북스',c:'기술/공학',r:877,s:'04'},
+{t:'가난한 찰리의 연감',a:'찰리 멍거',p:'김영사',c:'경제/경영',r:878,s:'12'},
+{t:'가시고기',a:'조창인',p:'산지',c:'소설',r:879,s:'02'},
+{t:'해커스 텝스 기출 보카(TEPS VOCA)',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:880,s:'19'},
+{t:'공정하다는 착각',a:'마이클 샌델',p:'와이즈베리',c:'인문',r:881,s:'06'},
+{t:'원칙',a:'레이 달리오',p:'한빛비즈',c:'경제/경영',r:882,s:'20'},
+{t:'여름은 오래 그곳에 남아',a:'마쓰이에 마사시',p:'비채',c:'소설',r:883,s:'13'},
+{t:'이상한 지도',a:'우케쓰',p:'리드비',c:'소설',r:885,s:'07'},
+{t:'요리 군과 다시 만날 수는 없어! 2',a:'Sumio Hataya',p:'서울미디어코믹스(서울문화사)',c:'만화',r:886,s:'09'},
+{t:'2026 투자자산운용사 출제동형 PLUS 최신 9회분(45회 수록)',a:'유창호',p:'시대고시기획',c:'취업/수험서',r:887,s:'20'},
+{t:'YBM 실전토익 RC 1000 Vol 2',a:'YBM 편집부',p:'YBM',c:'외국어',r:888,s:'07'},
+{t:'나는 고양이로소이다',a:'나쓰메 소세키',p:'열린책들',c:'소설',r:889,s:'03'},
+{t:'바다에서 온 소년',a:'개럿 카',p:'북파머스',c:'소설',r:890,s:'08'},
+{t:'김재우의 영어회화 100',a:'김재우',p:'상상스퀘어',c:'외국어',r:891,s:'04'},
+{t:'깊이에의 강요',a:'파트리크 쥐스킨트',p:'열린책들',c:'소설',r:893,s:'01'},
+{t:'10대를 위한 JUSTICE 정의란 무엇인가',a:'마이클 샌델 외',p:'미래엔아이세움',c:'어린이(초등)',r:894,s:'12'},
+{t:'남아 있는 나날',a:'가즈오 이시구로',p:'민음사',c:'소설',r:895,s:'20'},
+{t:'변신 시골의사',a:'프란츠 카프카',p:'민음사',c:'소설',r:896,s:'01'},
+{t:'예수로 충분하다',a:'박광리',p:'규장',c:'종교',r:898,s:'19'},
+{t:'혼잡(JOB) 건보(국민건강보험공단) NCS를 위한 PSAT+응용모듈 300제',a:'배현우 외',p:'커리어빅',c:'취업/수험서',r:899,s:'12'},
+{t:'흑집사 35',a:'Yana Toboso',p:'학산문화사',c:'만화',r:900,s:'05'},
+{t:'교양을 위한 최소한의 경제지식',a:'SBS 교양이를 부탁해 외',p:'인플루엔셜',c:'경제/경영',r:901,s:'19'},
+{t:'YBM 실전토익 LC 1000 Vol 2',a:'YBM 편집부',p:'YBM',c:'외국어',r:902,s:'21'},
+{t:'초역 부처의 말 필사집',a:'코이케 류노스케',p:'포레스트북스',c:'인문',r:903,s:'23'},
+{t:'10일 만에 끝내는 해커스 토익스피킹(토스) 스타트',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:904,s:'07'},
+{t:'숲속 100층짜리 집',a:'이와이 도시오',p:'북뱅크',c:'유아(0~7세)',r:905,s:'12'},
+{t:'엄마를 만나러 가는 길 3',a:'고먕',p:'네이버웹툰',c:'만화',r:906,s:'05'},
+{t:'죽음의 책',a:'조애나 에번스타인',p:'오월의봄',c:'인문',r:907,s:'10'},
+{t:'개역개정 작은 매일성경 (2026년 9/10월호)',a:'성서유니온 편집부',p:'성서유니온',c:'잡지',r:908,s:'12'},
+{t:'슈퍼 뒤에서 담배 피우는 두 사람 7',a:'지누시',p:'디앤씨미디어',c:'만화',r:909,s:'23'},
+{t:'에이든 국내여행 가이드북(2026-2027)',a:'이정기 외',p:'타블라라사',c:'여행',r:910,s:'19'},
+{t:'태도에 관하여(20만 부 기념 완결판)',a:'임경선',p:'토스트',c:'시/에세이',r:911,s:'18'},
+{t:'아이주도 이유식 유아식 매뉴얼 세트',a:'BLW 연구소',p:'아퍼블리싱',c:'요리',r:912,s:'20'},
+{t:'데뷔 못 하면 죽는 병 걸림 4(한정판)',a:'소흔',p:'파인툰',c:'만화',r:913,s:'13'},
+{t:'꾸준함을 기르는 일',a:'수풀림',p:'다산북스',c:'시/에세이',r:914,s:'09'},
+{t:'JLPT(일본어능력시험) 한권으로 끝내기 N1',a:'이치우 외',p:'다락원',c:'외국어',r:915,s:'14'},
+{t:'ETS 토익 정기시험 기출문제집 1000 Vol 3 LISTENING(리스닝)',a:'ETS',p:'YBM',c:'외국어',r:916,s:'04'},
+{t:'내 이름은 빨강 1',a:'오르한 파묵',p:'민음사',c:'소설',r:917,s:'09'},
+{t:'Tuesdays with Morrie',a:'Mitch Albom',p:'Anchor Books',c:'문학',r:918,s:'23'},
+{t:'여름(썸머 에디션)',a:'이디스 워튼',p:'머묾',c:'소설',r:919,s:'01'},
+{t:'전수환 공기업 경영학 개념심화',a:'전수환',p:'밀더북',c:'취업/수험서',r:920,s:'03'},
+{t:'당신은 사건 현장에 있습니다 1 2 3 Special Edition',a:'모데스토 가르시아',p:'중앙북스',c:'취미/실용/스포츠',r:921,s:'02'},
+{t:'슈퍼 뒤에서 담배 피우는 두 사람 4',a:'지누시 외',p:'디앤씨미디어',c:'만화',r:922,s:'07'},
+{t:'해커스 토익 왕기초 LC Listening (리스닝)',a:'David Cho',p:'해커스어학연구소',c:'외국어',r:923,s:'18'},
+{t:'논리는 나의 힘',a:'최훈',p:'우리학교',c:'청소년',r:924,s:'11'},
+{t:'똑같은 빨강은 없다',a:'김경서',p:'창비',c:'청소년',r:925,s:'01'},
+{t:'앵무새 죽이기',a:'하퍼 리',p:'열린책들',c:'소설',r:926,s:'24'},
+{t:'구운몽',a:'김만중',p:'민음사',c:'소설',r:927,s:'20'},
+{t:'통제구역관리부 4',a:'탄광',p:'다산코믹스(DASAN COMICS)',c:'만화',r:929,s:'05'},
+{t:'에그박사 18',a:'에그박사',p:'미래엔아이세움',c:'어린이(초등)',r:930,s:'07'},
+{t:'변신(초판본)(1916년 오리지널 초판본 표지디자인)',a:'프란츠 카프카',p:'더스토리',c:'소설',r:931,s:'09'},
+{t:'해커스 토익 실전 1000제 1 RC Reading(리딩) 문제집',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:932,s:'14'},
+{t:'니체 인생수업: 니체가 세상에 남긴 66가지 인생지혜(리커버 에디션)',a:'프리드리히 니체',p:'하이스트',c:'인문',r:933,s:'04'},
+{t:'지구 끝의 온실',a:'김초엽',p:'자이언트북스',c:'소설',r:935,s:'01'},
+{t:'부의 곡선',a:'안유화',p:'경이로움',c:'경제/경영',r:936,s:'24'},
+{t:'마리끌레르(2026년 9월호)(A형)',a:'MCK퍼블리싱 편집부',p:'MCK퍼블리싱',c:'잡지',r:937,s:'05'},
+{t:'읽는 기도 소책자',a:'무명의 기도자',p:'더하트',c:'종교',r:938,s:'04'},
+{t:'도스토옙스키 번역 일기',a:'김정아',p:'샘터(샘터사)',c:'시/에세이',r:939,s:'21'},
+{t:'ETS 토플 공식 파트너 Updated TOEFL All-in-One',a:'시원스쿨어학연구소',p:'시원스쿨닷컴',c:'외국어',r:940,s:'11'},
+{t:'당신은 사건 현장에 있습니다 시즌 2',a:'모데스토 가르시아',p:'중앙북스',c:'취미/실용/스포츠',r:941,s:'13'},
+{t:'엄마를 만나러 가는 길 4',a:'고먕',p:'네이버웹툰',c:'만화',r:943,s:'10'},
+{t:'잘잘잘 건강',a:'무영 외',p:'사람책',c:'건강',r:944,s:'18'},
+{t:'하루도 너를 잊은 날이 없었다',a:'채환',p:'스노우폭스북스O',c:'시/에세이',r:945,s:'08'},
+{t:'COMPACT 형사법 최신판례',a:'김기용',p:'타임노트',c:'취업/수험서',r:946,s:'16'},
+{t:'텅 빈 마음 가진 채로',a:'김화진',p:'문학과지성사',c:'소설',r:947,s:'12'},
+{t:'슈퍼 뒤에서 담배 피우는 두 사람 5',a:'지누시',p:'디앤씨미디어',c:'만화',r:949,s:'03'},
+{t:'왜 그들만 부자가 되는가',a:'필립 바구스 외',p:'북모먼트',c:'경제/경영',r:950,s:'14'},
+{t:'해커스 중국어 HSK 5급 한 권으로 정복 기본서 + 실전모의고사 + 핵심어휘집',a:'해커스 HSK연구소',p:'해커스',c:'외국어',r:951,s:'19'},
+{t:'마더북',a:'반비 편집부',p:'반비',c:'시/에세이',r:952,s:'24'},
+{t:'처음 읽는 한국사 1: 나라를 세운 왕들',a:'포도알친구',p:'미래엔아이세움',c:'어린이(초등)',r:953,s:'17'},
+{t:'지랄 맞을 용기',a:'조영훈',p:'모티브',c:'시/에세이',r:954,s:'07'},
+{t:'조용한 회복',a:'박재연',p:'한빛라이프',c:'인문',r:955,s:'09'},
+{t:'처음 읽는 그리스 로마 신화 13: 오디세우스의 모험',a:'최설희',p:'미래엔아이세움',c:'어린이(초등)',r:956,s:'14'},
+{t:'자유론(무삭제 완역본)',a:'존 스튜어트 밀',p:'현대지성',c:'인문',r:957,s:'19'},
+{t:'영원의 겨울',a:'이정은',p:'부크크(Bookk)',c:'소설',r:959,s:'16'},
+{t:'몫이 있는 사람',a:'공근식',p:'웅진지식하우스',c:'시/에세이',r:961,s:'13'},
+{t:'개소리에 대하여',a:'해리 G. 프랭크퍼트',p:'필로소픽',c:'인문',r:962,s:'21'},
+{t:'해커스 일본어 상용한자 1026+',a:'해커스일본어연구소',p:'해커스어학연구소',c:'외국어',r:963,s:'11'},
+{t:'담을 넘은 아이',a:'김정민',p:'비룡소',c:'어린이(초등)',r:964,s:'13'},
+{t:'강아지똥',a:'권정생',p:'길벗어린이',c:'유아(0~7세)',r:965,s:'09'},
+{t:'침묵',a:'엔도 슈사쿠',p:'홍성사',c:'종교',r:966,s:'11'},
+{t:'중세의 여행자들',a:'앤서니 베일',p:'서해문집',c:'역사/문화',r:968,s:'20'},
+{t:'뚝딱 바로 써먹는 AI 3대장: 챗GPT · 제미나이 · 클로드',a:'코리아교육그룹',p:'안경다리북스',c:'컴퓨터/IT',r:969,s:'13'},
+{t:'일본 광고 카피 도감',a:'오하림',p:'서교책방',c:'시/에세이',r:970,s:'21'},
+{t:'여행영어 10분의 기적',a:'해커스어학연구소',p:'해커스어학연구소',c:'외국어',r:971,s:'08'},
+{t:'ETS 토익 정기시험 기출입문서 LC 리스닝',a:'ETS',p:'YBM',c:'외국어',r:972,s:'04'},
+{t:'안나 카레니나 세트',a:'레프 니콜라예비치 톨스토이',p:'민음사',c:'소설',r:973,s:'18'},
+{t:'2026 고시넷 공기업 NCS 통합문제집: 초록이 2(모듈형/피듈형)',a:'고시넷 NCS 연구소',p:'고시넷',c:'취업/수험서',r:974,s:'14'},
+{t:'슈퍼 뒤에서 담배 피우는 두 사람 6',a:'지누시',p:'디앤씨미디어',c:'만화',r:975,s:'16'},
+{t:'해커스 토익 실전 1000제 1 LC Listening(리스닝) 문제집',a:'해커스 어학연구소',p:'해커스어학연구소',c:'외국어',r:976,s:'09'},
+{t:'도파민네이션',a:'애나 렘키',p:'흐름출판',c:'인문',r:977,s:'14'},
+{t:'스피킹 매트릭스 2분 영어 말하기',a:'김영욱(달변가 영쌤)',p:'길벗이지톡',c:'외국어',r:978,s:'10'},
+{t:'주식시장의 심리학',a:'조지 C. 셀든',p:'반니출판',c:'경제/경영',r:979,s:'15'},
+{t:'일상 질문 사전',a:'전성원',p:'유유',c:'인문',r:980,s:'20'},
+{t:'빨간내복야코 안 읽으면 완전 위험한 과학책 5: 지구 운명이 위기',a:'빨간내복야코',p:'위즈덤하우스',c:'어린이(초등)',r:981,s:'16'},
+{t:'지킬 박사와 하이드 씨의 기이한 사건',a:'로버트 루이스 스티븐슨 외',p:'민음사',c:'소설',r:982,s:'24'},
+{t:'장화홍련전',a:'박은정',p:'파란자전거',c:'어린이(초등)',r:983,s:'11'},
+{t:'내가 엄마를 골랐어!',a:'노부미',p:'위즈덤하우스',c:'유아(0~7세)',r:984,s:'13'},
+{t:'리얼리티 트랜서핑 1',a:'바딤 젤란드',p:'정신세계사',c:'자기계발',r:985,s:'21'},
+{t:'젊은 느티나무',a:'강신재',p:'민음사',c:'소설',r:986,s:'17'},
+{t:'2026 명강의Big10 - 송길영',a:'송길영',p:'',c:'강연',r:987,s:'13'},
+{t:'누구나 아는 나만 모르는 클로드',a:'누나IT(이성원)',p:'한빛미디어',c:'컴퓨터/IT',r:989,s:'22'},
+{t:'마음의 주인은 언제나 나야',a:'손원우',p:'페이지2북스',c:'어린이(초등)',r:990,s:'21'},
+{t:'싸울게요, 안 죽었으니까',a:'김진주',p:'글항아리',c:'정치/사회',r:991,s:'02'},
+{t:'죽이고 싶은 아이 2',a:'이꽃님',p:'우리학교',c:'청소년',r:992,s:'04'}
+        ];
+
+        // 분야(카테고리) → 매장 내 구역 좌표 매핑 (before/after 배치가 달라 모드별로 분리)
+        // ※ 최적화 후 J구역(소설)이 계산대·입구 바로 앞으로 이동하고, K구역(인문)·H구역(경제)이 한 칸씩 위로 옮겨갑니다. 나머지 구역은 동일합니다.
+        const zoneCenters = {
+            before: {
+                '소설':        { x: 250, y: 150, label: 'J구역(소설)' },
+                '인문':        { x: 250, y: 250, label: 'K구역(인문)' },
+                '역사/문화':    { x: 250, y: 250, label: 'K구역(인문) 인근' },
+                '시/에세이':    { x: 250, y: 250, label: 'K구역(인문) 인근' },
+                '문학':        { x: 250, y: 250, label: 'K구역(인문) 인근' },
+                '종교':        { x: 250, y: 250, label: 'K구역(인문) 인근' },
+                '책향':        { x: 250, y: 250, label: 'K구역(인문) 인근' },
+                '강연':        { x: 250, y: 250, label: 'K구역(인문) 인근' },
+                '인문/사회':    { x: 250, y: 250, label: 'K구역(인문) 인근' },
+                '경제/경영':    { x: 250, y: 350, label: 'H구역(경제)' },
+                '자기계발':     { x: 250, y: 350, label: 'H구역(경제) 인근' },
+                '정치/사회':    { x: 420, y: 265, label: 'H구역(사회)' },
+                '외국어':      { x: 420, y: 330, label: 'G구역(외국어)' },
+                '취업/수험서':  { x: 420, y: 135, label: 'L구역(학습)' },
+                '중/고등참고서': { x: 420, y: 135, label: 'L구역(학습) 인근' },
+                'ELT/수험서':  { x: 420, y: 135, label: 'L구역(학습) 인근' },
+                '과학':        { x: 420, y: 200, label: 'I구역(과학)' },
+                '컴퓨터/IT':    { x: 420, y: 200, label: 'I구역(과학) 인근' },
+                '기술/공학':    { x: 420, y: 200, label: 'I구역(과학) 인근' },
+                '어린이(초등)':  { x: 100, y: 462, label: 'C구역(아동/완구)' },
+                '청소년':      { x: 100, y: 462, label: 'C구역(아동/완구) 인근' },
+                '유아(0~7세)':  { x: 100, y: 462, label: 'C구역(아동/완구) 인근' },
+                '유아/아동/청소년': { x: 100, y: 462, label: 'C구역(아동/완구) 인근' },
+                '가정/육아':    { x: 100, y: 462, label: 'C구역(아동/완구) 인근' },
+                '만화':        { x: 70,  y: 190, label: 'A구역(만화)' },
+                '잡지':        { x: 70,  y: 130, label: 'A구역(잡지)' },
+                '건강':        { x: 70,  y: 250, label: 'A구역(건강)' },
+                '예술/대중문화': { x: 70,  y: 332, label: 'B구역(미술)' },
+                '예술/건축':    { x: 70,  y: 332, label: 'B구역(미술) 인근' },
+                '여행':        { x: 70,  y: 397, label: 'B구역(여행)' },
+                '요리':        { x: 420, y: 50,  label: 'H-Kitchen' },
+                '취미/실용/스포츠': { x: 155, y: 50,  label: 'HOTTRACKS' }
+            },
+            after: {
+                '소설':        { x: 250, y: 350, label: 'J구역(전진배치·계산대 인근)' },
+                '인문':        { x: 250, y: 150, label: 'K구역(인문)' },
+                '역사/문화':    { x: 250, y: 150, label: 'K구역(인문) 인근' },
+                '시/에세이':    { x: 250, y: 150, label: 'K구역(인문) 인근' },
+                '문학':        { x: 250, y: 150, label: 'K구역(인문) 인근' },
+                '종교':        { x: 250, y: 150, label: 'K구역(인문) 인근' },
+                '책향':        { x: 250, y: 150, label: 'K구역(인문) 인근' },
+                '강연':        { x: 250, y: 150, label: 'K구역(인문) 인근' },
+                '인문/사회':    { x: 250, y: 150, label: 'K구역(인문) 인근' },
+                '경제/경영':    { x: 250, y: 250, label: 'H구역(경제)' },
+                '자기계발':     { x: 250, y: 250, label: 'H구역(경제) 인근' },
+                '정치/사회':    { x: 420, y: 265, label: 'H구역(사회)' },
+                '외국어':      { x: 420, y: 330, label: 'G구역(외국어)' },
+                '취업/수험서':  { x: 420, y: 135, label: 'L구역(학습)' },
+                '중/고등참고서': { x: 420, y: 135, label: 'L구역(학습) 인근' },
+                'ELT/수험서':  { x: 420, y: 135, label: 'L구역(학습) 인근' },
+                '과학':        { x: 420, y: 200, label: 'I구역(과학)' },
+                '컴퓨터/IT':    { x: 420, y: 200, label: 'I구역(과학) 인근' },
+                '기술/공학':    { x: 420, y: 200, label: 'I구역(과학) 인근' },
+                '어린이(초등)':  { x: 100, y: 462, label: 'C구역(아동/완구)' },
+                '청소년':      { x: 100, y: 462, label: 'C구역(아동/완구) 인근' },
+                '유아(0~7세)':  { x: 100, y: 462, label: 'C구역(아동/완구) 인근' },
+                '유아/아동/청소년': { x: 100, y: 462, label: 'C구역(아동/완구) 인근' },
+                '가정/육아':    { x: 100, y: 462, label: 'C구역(아동/완구) 인근' },
+                '만화':        { x: 70,  y: 190, label: 'A구역(만화)' },
+                '잡지':        { x: 70,  y: 130, label: 'A구역(잡지)' },
+                '건강':        { x: 70,  y: 250, label: 'A구역(건강)' },
+                '예술/대중문화': { x: 70,  y: 332, label: 'B구역(미술)' },
+                '예술/건축':    { x: 70,  y: 332, label: 'B구역(미술) 인근' },
+                '여행':        { x: 70,  y: 397, label: 'B구역(여행)' },
+                '요리':        { x: 420, y: 50,  label: 'H-Kitchen' },
+                '취미/실용/스포츠': { x: 155, y: 50,  label: 'HOTTRACKS' }
+            }
+        };
+
+        // 카테고리별 도서 수 집계 (필터 탭 표시용, 개수가 많은 순으로 정렬)
+        const categoryCounts = {};
+        booksDB.forEach(b => { categoryCounts[b.c] = (categoryCounts[b.c] || 0) + 1; });
+        const categoryList = Object.keys(categoryCounts).sort((a, b) => categoryCounts[b] - categoryCounts[a]);
+
+        function currentMode() {
+            return activeTab === 'optimize' ? 'after' : 'before';
+        }
+
+        // ===================== 인기 검색어 =====================
+        const quickSearchTitles = [
+            '싯다르타', '데미안', '코스모스(100만부 기념판)',
+            '세네카, 오늘을 빼앗기고 있는 당신에게', '해커스 토익 기출 VOCA(보카)', '나의 첫 번째 부동산 교과서'
+        ];
+
+        function renderGlobalQuickChips() {
+            const container = document.getElementById('quickChipsGlobal');
+            container.innerHTML = quickSearchTitles.map(t => `<button type="button" class="quick-chip" onclick="document.getElementById('globalBookSearch').value='${t.replace(/'/g, "\\'")}'; onSearchInput(); openSearchDropdown();">${t.length > 12 ? t.slice(0, 12) + '…' : t}</button>`).join('');
+        }
+
+        // ===================== 탭(카테고리 사이드바) 전환 =====================
+        let activeTab = 'basic';
+        const tabModeLabel = {
+            basic:    '🗺️ 기본 매장 기준 안내',
+            optimize: '⚙️ 최적화 매장 기준 안내'
+        };
+
+        function switchTab(tab) {
+            const prevTab = activeTab;
+            activeTab = tab;
+            document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tab);
+            });
+            const modeLabelEl = document.getElementById('globalSearchModeLabel');
+            if (tab === 'basic' || tab === 'optimize') {
+                modeLabelEl.innerText = '현재: ' + tabModeLabel[tab];
+            } else {
+                modeLabelEl.innerText = '현재: 🗺️ 기본 매장 기준 안내';
+            }
+            renderSearchResults();
+
+            // [신규] '🆚 동선 비교' 탭에 들어오면 자동재생을 시작하고,
+            // 다른 탭으로 나가면 불필요한 애니메이션이 계속 돌지 않도록 정지합니다.
+            if (tab === 'routecompare') {
+                startCompareAutoPlay();
+            } else if (prevTab === 'routecompare') {
+                stopCompareAutoPlay();
+            }
+        }
+
+        // ===================== 전체 도서 통합 검색 및 실시간 필터링 엔진 =====================
+        let searchCategory = 'all';
+        const MAX_RESULTS_SHOWN = 40;
+
+        function normalize(s) {
+            return (s || '').toString().toLowerCase();
+        }
+
+        function filterBooks() {
+            const q = normalize(document.getElementById('globalBookSearch').value.trim());
+            return booksDB.filter(b => {
+                const matchesQuery = !q || normalize(b.t).includes(q) || normalize(b.a).includes(q);
+                const matchesCategory = searchCategory === 'all' || b.c === searchCategory;
+                return matchesQuery && matchesCategory;
+            });
+        }
+
+        function renderCategoryTabs() {
+            const wrap = document.getElementById('searchCategoryTabs');
+            const allBtn = `<button type="button" class="cat-tab ${searchCategory === 'all' ? 'active' : ''}" onclick="setSearchCategory('all')">전체 <span class="cat-tab-count">${booksDB.length}</span></button>`;
+            const rest = categoryList.map(c => `<button type="button" class="cat-tab ${searchCategory === c ? 'active' : ''}" onclick="setSearchCategory('${c.replace(/'/g, "\\'")}')">${c} <span class="cat-tab-count">${categoryCounts[c]}</span></button>`).join('');
+            wrap.innerHTML = allBtn + rest;
+        }
+
+        function setSearchCategory(cat) {
+            searchCategory = cat;
+            renderCategoryTabs();
+            renderSearchResults();
+        }
+
+        function bookCardHTML(b, idx) {
+            const zone = zoneCenters[currentMode()][b.c];
+            const locLabel = zone ? `${zone.label} · 서가 ${b.s}` : '위치 정보 준비 중';
+            return `
+                <div class="search-result-card">
+                    <div class="src-top">
+                        <span class="src-title">${b.t}</span>
+                        <span class="src-cat-badge">${b.c}</span>
+                    </div>
+                    <div class="src-meta">${b.a || '저자 미상'} · ${b.p || '출판사 정보 없음'} · 온라인 판매 ${b.r}위</div>
+                    <div class="src-loc-row">
+                        <span class="src-loc">📍 ${locLabel}</span>
+                        <button type="button" class="src-locate-btn" onclick="locateBook(${idx})" ${zone ? '' : 'disabled'}>위치 안내</button>
+                    </div>
+                </div>`;
+        }
+
+        function renderSearchResults() {
+            const listEl = document.getElementById('searchResultsList');
+            const countEl = document.getElementById('searchResultsCount');
+            const results = filterBooks();
+
+            if (results.length === 0) {
+                countEl.innerText = '검색된 도서가 없습니다';
+                const fallback = booksDB.filter(b => quickSearchTitles.includes(b.t));
+                listEl.innerHTML = `
+                    <div class="search-empty">
+                        <div class="search-empty-title">⚠️ 검색된 도서가 없습니다. 다른 키워드로 검색해 보세요.</div>
+                        <div class="search-empty-sub">💡 대신 이런 인기 도서는 어떠세요?</div>
+                    </div>
+                ` + fallback.map(b => bookCardHTML(b, booksDB.indexOf(b))).join('');
+                return;
+            }
+
+            countEl.innerText = `총 ${results.length}권 검색됨${results.length > MAX_RESULTS_SHOWN ? ` (상위 ${MAX_RESULTS_SHOWN}권 표시)` : ''}`;
+            const shown = results.slice(0, MAX_RESULTS_SHOWN);
+            listEl.innerHTML = shown.map(b => bookCardHTML(b, booksDB.indexOf(b))).join('');
+        }
+
+        function onSearchInput() {
+            renderSearchResults();
+            openSearchDropdown();
+        }
+
+        function openSearchDropdown() {
+            document.getElementById('searchDropdown').classList.add('open');
+        }
+        function closeSearchDropdown() {
+            document.getElementById('searchDropdown').classList.remove('open');
+        }
+
+        // 지도 위 목표 지점에 반짝이는 마커를 잠깐 표시
+        function flashZone(mode, x, y) {
+            const st = state[mode];
+            const canvas = document.getElementById(st.canvasId);
+            const container = canvas.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            const scaleX = canvasRect.width / CANVAS_SIZE;
+            const scaleY = canvasRect.height / CANVAS_SIZE;
+            const offsetX = canvasRect.left - containerRect.left;
+            const offsetY = canvasRect.top - containerRect.top;
+
+            const marker = document.createElement('div');
+            marker.className = 'pulse-marker';
+            marker.style.left = (offsetX + x * scaleX) + 'px';
+            marker.style.top = (offsetY + y * scaleY) + 'px';
+            container.appendChild(marker);
+            setTimeout(() => marker.remove(), 1500);
+        }
+
+        // 검색 결과 카드의 [위치 안내] 버튼
+        async function locateBook(idx) {
+            const book = booksDB[idx];
+            if (!book) return;
+
+            let mode = currentMode();
+            if (activeTab !== 'basic' && activeTab !== 'optimize') {
+                switchTab('basic');
+                mode = 'before';
+            }
+
+            const zone = zoneCenters[mode][book.c];
+            const statusEl = document.getElementById('globalBookSearchResult');
+            if (!zone) {
+                statusEl.className = 'book-search-result notfound';
+                statusEl.innerText = `⚠️ '${book.t}'(${book.c})의 서가 위치 정보가 아직 없습니다.`;
+                return;
+            }
+
+            closeSearchDropdown();
+            statusEl.className = 'book-search-result found';
+            statusEl.innerText = `📍 '${book.t}' (${book.a} · ${book.c})을(를) 찾아 ${zone.label} · 서가 ${book.s}(으)로 안내합니다...`;
+            flashZone(mode, zone.x, zone.y);
+            await goTo(mode, 'guide', { x: zone.x, y: zone.y }, `'${book.t}' - ${zone.label}`);
+            statusEl.innerText = `✅ '${book.t}' 위치(${zone.label} · 서가 ${book.s}) 도착 완료! (${mode === 'before' ? '기본' : '최적화'} 매장 기준)`;
+        }
+
+        // 검색창 Enter: 가장 먼저 매칭된 결과로 바로 안내
+        function globalSearchBookEnter() {
+            const results = filterBooks();
+            if (results.length === 0) { renderSearchResults(); openSearchDropdown(); return; }
+            locateBook(booksDB.indexOf(results[0]));
+        }
+
+        function initSearchEngine() {
+            renderCategoryTabs();
+            renderSearchResults();
+            renderGlobalQuickChips();
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.global-search-box')) closeSearchDropdown();
+            });
+        }
+
+        // ===================== 온라인 vs 오프라인 비교·평가 데이터 =====================
+
+        const ratingCriteria = [
+            { label: '구매 편의성',     online: 4.6, offline: 3.8 },
+            { label: '가격 만족도',     online: 4.3, offline: 3.6 },
+            { label: '실물/체험 만족도', online: 2.4, offline: 4.7 },
+            { label: '직원 응대 만족도', online: 3.1, offline: 4.5 },
+            { label: '수령/배송 속도',   online: 3.4, offline: 4.8 }
+        ];
+
+        const reviews = [
+            { channel: 'online',  user: '독서가_민준', rating: 5, text: '밤늦게 주문했는데 다음 날 바로 도착해서 좋았어요.', date: '2026.09.02' },
+            { channel: 'online',  user: 'bookworm22',  rating: 4, text: '할인 쿠폰이 많아서 가격은 만족스러운데, 실물을 못 보고 사서 표지 상태가 걱정됐어요.', date: '2026.08.28' },
+            { channel: 'online',  user: '서연맘',       rating: 3, text: '배송이 하루 늦어져서 아쉬웠어요. 그것만 빼면 편해요.', date: '2026.08.20' },
+            { channel: 'offline', user: '지훈',         rating: 5, text: '직원분이 원하는 분야 책을 바로 찾아주셔서 시간이 많이 절약됐어요.', date: '2026.09.05' },
+            { channel: 'offline', user: '책방순례자',    rating: 5, text: '동선이 넓어져서 아이랑 다녀도 부딪힐 일이 없었어요. 계산도 빨랐어요.', date: '2026.09.01' },
+            { channel: 'offline', user: '하은',         rating: 4, text: '원하는 책이 매대에 없어서 직원분께 여쭤봤는데 바로드림으로 안내해주셨어요.', date: '2026.08.24' }
+        ];
+
+        let currentReviewFilter = 'all';
+
+        function starString(score) {
+            const full = Math.round(score);
+            return '★'.repeat(full) + '☆'.repeat(5 - full);
+        }
+
+        function renderRatingBars() {
+            const container = document.getElementById('ratingBars');
+            container.innerHTML = ratingCriteria.map(c => `
+                <div class="rating-row">
+                    <div class="rating-label">${c.label}</div>
+                    <div class="rating-bar-track">
+                        <span style="width:50px; font-size:11px; color:#0d6efd;">🌐 온라인</span>
+                        <div class="rating-bar-outer"><div class="rating-bar-inner online" style="width:${c.online / 5 * 100}%;"></div></div>
+                        <div class="rating-bar-value">${c.online.toFixed(1)}점</div>
+                    </div>
+                    <div class="rating-bar-track" style="margin-top:4px;">
+                        <span style="width:50px; font-size:11px; color:#28a745;">🏬 오프라인</span>
+                        <div class="rating-bar-outer"><div class="rating-bar-inner offline" style="width:${c.offline / 5 * 100}%;"></div></div>
+                        <div class="rating-bar-value">${c.offline.toFixed(1)}점</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderReviewSummary() {
+            const online = reviews.filter(r => r.channel === 'online');
+            const offline = reviews.filter(r => r.channel === 'offline');
+            const avg = arr => arr.reduce((s, r) => s + r.rating, 0) / arr.length;
+
+            const onlineAvg = avg(online), offlineAvg = avg(offline);
+            document.getElementById('onlineAvgScore').innerText = onlineAvg.toFixed(1);
+            document.getElementById('onlineAvgStars').innerText = starString(onlineAvg);
+            document.getElementById('onlineCount').innerText = `리뷰 ${online.length}건`;
+
+            document.getElementById('offlineAvgScore').innerText = offlineAvg.toFixed(1);
+            document.getElementById('offlineAvgStars').innerText = starString(offlineAvg);
+            document.getElementById('offlineCount').innerText = `리뷰 ${offline.length}건`;
+        }
+
+        function renderReviews() {
+            const list = currentReviewFilter === 'all' ? reviews : reviews.filter(r => r.channel === currentReviewFilter);
+            const container = document.getElementById('reviewList');
+            container.innerHTML = list.map(r => `
+                <div class="review-card">
+                    <div class="review-top">
+                        <div>
+                            <span class="review-badge ${r.channel}">${r.channel === 'online' ? '온라인' : '오프라인'}</span>
+                            <strong style="margin-left:6px;">${r.user}</strong>
+                        </div>
+                        <span class="review-stars">${starString(r.rating)}</span>
+                    </div>
+                    <div class="review-text">${r.text}</div>
+                    <div class="review-meta">${r.date}</div>
+                </div>
+            `).join('');
+        }
+
+        function setReviewFilter(filter) {
+            currentReviewFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            renderReviews();
+        }
+
+        // ===================== [신규] ① 구역별 혼잡도 히트맵 시뮬레이션 =====================
+        // 초보자를 위한 설명:
+        //  - 히트맵 모드를 켜면, 실제 안내 직원과는 별개로 "가상 고객" 여러 명이
+        //    매장 안을 계속 돌아다닙니다. 고객이 지나간 자리는 heatGrid(격자)에
+        //    카운트가 쌓이고, drawMap()이 그 카운트를 붉은 반투명 사각형으로
+        //    그려서 "사람이 많이 몰린 구역일수록 더 진하게" 보이게 합니다.
+        //  - [버그 수정] zoneCenters의 좌표(x,y)는 원래 "구역 이름표를 그릴 위치"라서
+        //    실제로는 책장(막힌 칸) 한가운데인 경우가 많았습니다. 고객이 그 지점을
+        //    목표로 삼으면 책장 앞에서 더는 못 들어가고 영원히 같은 자리에 멈춰서
+        //    "혼잡도가 제대로 퍼지지 않고 한 점에만 쌓이는" 문제가 생겼습니다.
+        //    아래 snapTargetToAisle()로 목표 좌표를 가장 가까운 "빈 통로 칸"으로
+        //    스냅(snap)해서, 고객이 실제로 그 지점까지 걸어갈 수 있도록 고쳤습니다.
+        function zoneModeFor(mode) {
+            return (mode === 'after' || mode === 'cmpAfter') ? 'after' : 'before';
+        }
+
+        function snapTargetToAisle(grid, x, y) {
+            const cell = toCell(x, y);
+            const free = findNearestFree(grid, cell.c, cell.r);
+            const px = toPixel(free.c, free.r);
+            return { x: px.x, y: px.y };
+        }
+
+        function pickRandomZoneTarget(mode) {
+            const inst = state[mode];
+            const zk = zoneModeFor(mode);
+            const zoneKeys = Object.keys(zoneCenters[zk]);
+            const z = zoneCenters[zk][zoneKeys[Math.floor(Math.random() * zoneKeys.length)]];
+            const jitterX = z.x + (Math.random() * 30 - 15);
+            const jitterY = z.y + (Math.random() * 30 - 15);
+            return snapTargetToAisle(inst.grid, jitterX, jitterY);
+        }
+
+        function spawnCustomers(mode) {
+            const inst = state[mode];
+            const customers = [];
+            const palette = ['🚶', '🧍', '🚶\u200d♀️', '🧑\u200d🦱', '👩', '👨', '🧑', '🚶\u200d♂️'];
+            const startCell = toCell(CHECKOUT_POINT.x, CHECKOUT_POINT.y);
+            const startFree = findNearestFree(inst.grid, startCell.c, startCell.r);
+            const startPx = toPixel(startFree.c, startFree.r);
+            for (let i = 0; i < 9; i++) {
+                customers.push({
+                    pos: { x: startPx.x + (Math.random() * 30 - 15), y: startPx.y + (Math.random() * 16 - 8) },
+                    target: pickRandomZoneTarget(mode),
+                    stuckFrames: 0,
+                    icon: palette[i % palette.length]
+                });
+            }
+            inst.customers = customers;
+        }
+
+        function stepCustomers(mode) {
+            const inst = state[mode];
+            inst.customers.forEach(cu => {
+                const dx = cu.target.x - cu.pos.x, dy = cu.target.y - cu.pos.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < 10) {
+                    cu.target = pickRandomZoneTarget(mode);
+                    cu.stuckFrames = 0;
+                    return;
+                }
+                const speed = 2.1;
+                const nx = cu.pos.x + (dx / dist) * speed + (Math.random() * 1.4 - 0.7);
+                const ny = cu.pos.y + (dy / dist) * speed + (Math.random() * 1.4 - 0.7);
+                const cell = toCell(nx, ny);
+                if (inst.grid && !inst.grid[cell.r][cell.c]) {
+                    cu.pos.x = Math.max(6, Math.min(CANVAS_SIZE - 6, nx));
+                    cu.pos.y = Math.max(6, Math.min(CANVAS_SIZE - 6, ny));
+                    cu.stuckFrames = 0;
+                } else {
+                    // [신규] 통로가 막혀 몇 프레임 이상 제자리걸음을 하면,
+                    // 그 목표는 포기하고 새 목표를 다시 뽑아 계속 돌아다니게 합니다.
+                    cu.stuckFrames = (cu.stuckFrames || 0) + 1;
+                    if (cu.stuckFrames > 20) {
+                        cu.target = pickRandomZoneTarget(mode);
+                        cu.stuckFrames = 0;
+                    }
+                }
+                const hc = Math.min(inst.heatGrid[0].length - 1, Math.max(0, Math.floor(cu.pos.x / HEAT_CELL)));
+                const hr = Math.min(inst.heatGrid.length - 1, Math.max(0, Math.floor(cu.pos.y / HEAT_CELL)));
+                inst.heatGrid[hr][hc] += 1;
+            });
+        }
+
+        function runHeatmapLoop(mode) {
+            const inst = state[mode];
+            if (!inst.heatMode) return;
+            stepCustomers(mode);
+            renderInstance(mode);
+            requestAnimationFrame(() => runHeatmapLoop(mode));
+        }
+
+        function toggleHeatmap(mode) {
+            const inst = state[mode];
+            const btn = document.getElementById('heatBtn_' + mode);
+            inst.heatMode = !inst.heatMode;
+            if (inst.heatMode) {
+                if (!inst.heatGrid) inst.heatGrid = makeHeatGrid();
+                if (!inst.customers || inst.customers.length === 0) spawnCustomers(mode);
+                if (btn) { btn.textContent = '🔥 혼잡도 히트맵 모드 OFF'; btn.classList.add('heat-on'); }
+                runHeatmapLoop(mode);
+            } else {
+                if (btn) { btn.textContent = '🔥 혼잡도 히트맵 모드 ON'; btn.classList.remove('heat-on'); }
+                renderInstance(mode);
+            }
+        }
+
+        // [신규] 히트맵 격자를 초기화(리셋)하는 버튼용 함수 — 쌓인 혼잡도를 지우고 새로 시작
+        function resetHeatmap(mode) {
+            const inst = state[mode];
+            inst.heatGrid = makeHeatGrid();
+            if (inst.heatMode) spawnCustomers(mode);
+            renderInstance(mode);
+        }
+
+        // ===================== [신규] ② 다크 모드 테마 전환 =====================
+        let isDarkTheme = (localStorage.getItem('kyoboTheme') === 'dark');
+
+        function applyTheme() {
+            document.body.classList.toggle('dark-theme', isDarkTheme);
+            const btn = document.getElementById('themeToggleBtn');
+            if (btn) btn.textContent = isDarkTheme ? '☀️ 라이트 모드' : '🌙 다크 모드';
+            ['before', 'after', 'cmpBefore', 'cmpAfter'].forEach(k => { if (state[k] && state[k].grid) renderInstance(k); });
+            if (document.getElementById('reportCanvasBefore')) {
+                drawReportRoute('reportCanvasBefore', beforeShelves, 'before');
+                drawReportRoute('reportCanvasAfter', afterShelves, 'after');
+            }
+        }
+
+        function toggleTheme() {
+            isDarkTheme = !isDarkTheme;
+            localStorage.setItem('kyoboTheme', isDarkTheme ? 'dark' : 'light');
+            applyTheme();
+        }
+
+        // ===================== [신규] ③ 온·오프라인 베스트셀러 TOP5 패널 =====================
+        function renderBestsellerPanel() {
+            const top5 = booksDB.slice().sort((a, b) => a.r - b.r).slice(0, 5);
+            const container = document.getElementById('bestsellerScroll');
+            if (!container) return;
+            container.innerHTML = top5.map(b => {
+                const idx = booksDB.indexOf(b);
+                return `<div class="bestseller-card" onclick="locateBook(${idx})">
+                    <div class="bestseller-rank">${b.r}위</div>
+                    <div class="bestseller-name">${b.t}</div>
+                    <div class="bestseller-cat">${b.c} · ${b.a}</div>
+                </div>`;
+            }).join('');
+        }
+
+        // ===================== [신규] ④ 지점 선택 =====================
+        function onBranchChange() {
+            const val = document.getElementById('branchSelect').value;
+            const labelEl = document.getElementById('reportBranchLabel');
+            if (labelEl) labelEl.innerText = val;
+        }
+
+        // ===================== [신규] ⑤ 동선 비교 분석 보고서: 일러스트 경로 그리기 =====================
+        // 초보자를 위한 설명:
+        //  - 이 함수는 실제 BFS 이동 애니메이션과는 별개로, "보고서용 정지 이미지"를
+        //    그립니다. Before는 일부러 여러 번 꺾이는 붉은 점선으로, After는
+        //    목적지까지 곧장 이어지는 매끄러운 파란 실선으로 그려서 두 동선의
+        //    차이를 한눈에 대비시킵니다.
+        function drawReportRoute(canvasId, shelves, mode) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const theme = currentCanvasTheme();
+            const scale = canvas.width / CANVAS_SIZE;
+
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = theme.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.scale(scale, scale);
+
+            shelves.forEach(s => {
+                ctx.fillStyle = s.bg || theme.shelf;
+                ctx.strokeStyle = s.border || '#334155';
+                ctx.lineWidth = 1;
+                ctx.fillRect(s.x, s.y, s.w, s.h);
+                ctx.strokeRect(s.x, s.y, s.w, s.h);
+                ctx.fillStyle = s.color || theme.text;
+                ctx.font = 'bold 9px "Malgun Gothic"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(s.name, s.x + s.w / 2, s.y + s.h / 2);
+            });
+
+            if (mode === 'before') {
+                // [일부러] 매장 전체를 불필요하게 빙글빙글 도는 복잡한 경로
+                const pts = [
+                    CHECKOUT_POINT, { x: 480, y: 486 }, { x: 480, y: 300 },
+                    { x: 300, y: 300 }, { x: 300, y: 130 }, { x: 120, y: 130 },
+                    { x: 120, y: 300 }, { x: 250, y: 150 }, { x: 165, y: 130 },
+                    { x: 250, y: 486 }, CHECKOUT_POINT
+                ];
+                ctx.strokeStyle = '#dc3545';
+                ctx.lineWidth = 3.4;
+                ctx.setLineDash([9, 7]);
+                ctx.lineJoin = 'miter';
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.stroke();
+                ctx.setLineDash([]);
+            } else {
+                // 최적화 배치에서는 바로드림→소설(J구역)→계산대가 거의 일직선
+                const pts = [ CHECKOUT_POINT, { x: 250, y: 350 }, { x: 165, y: 350 } ];
+                ctx.strokeStyle = '#0d6efd';
+                ctx.lineWidth = 4.2;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // ===================== [신규] ⑥ 비교 분석 보고서 이미지 내보내기 =====================
+        function roundRectPath(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        function exportReportImage() {
+            const W = 1000, H = 800;
+            const off = document.createElement('canvas');
+            off.width = W; off.height = H;
+            const ctx = off.getContext('2d');
+            const dark = isDarkTheme;
+            const branch = (document.getElementById('branchSelect') || {}).value || '광화문점';
+
+            ctx.fillStyle = dark ? '#0b1220' : '#ffffff';
+            ctx.fillRect(0, 0, W, H);
+
+            ctx.fillStyle = dark ? '#e2e8f0' : '#004085';
+            ctx.font = 'bold 24px "Malgun Gothic"';
+            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            ctx.fillText(`교보문고 ${branch} — 동선 비교 분석 보고서`, 30, 24);
+            ctx.font = '13px "Malgun Gothic"';
+            ctx.fillStyle = dark ? '#9fb0c9' : '#666666';
+            ctx.fillText('생성일: ' + new Date().toLocaleString('ko-KR'), 30, 58);
+
+            const cb = document.getElementById('reportCanvasBefore');
+            const ca = document.getElementById('reportCanvasAfter');
+            if (cb) ctx.drawImage(cb, 30, 90, 440, 440);
+            if (ca) ctx.drawImage(ca, 520, 90, 440, 440);
+
+            ctx.font = 'bold 13px "Malgun Gothic"';
+            ctx.fillStyle = '#dc3545';
+            ctx.fillText('🔴 Before — 복잡하고 꺾임이 많은 동선', 30, 540);
+            ctx.fillStyle = '#0d6efd';
+            ctx.fillText('🔵 After — 최단거리 직행 동선', 520, 540);
+
+            const badges = ['✅ 불필요한 우회 구간 제거', '✅ 최단 거리 알고리즘 적용', '✅ 병목 구간 회피 경로'];
+            let bx = 30;
+            ctx.font = 'bold 12px "Malgun Gothic"';
+            badges.forEach(b => {
+                const w = ctx.measureText(b).width + 24;
+                ctx.fillStyle = dark ? '#0f1a30' : '#eaf2ff';
+                ctx.strokeStyle = '#0d6efd';
+                ctx.lineWidth = 1;
+                roundRectPath(ctx, bx, 570, w, 28, 14);
+                ctx.fill(); ctx.stroke();
+                ctx.fillStyle = dark ? '#a9c6ff' : '#084298';
+                ctx.fillText(b, bx + 12, 578);
+                bx += w + 10;
+            });
+
+            const rows = [
+                ['비교 지표', 'Before(기존)', 'After(최적화)', '개선 효과'],
+                ['이동 거리', '12.4 km', '8.1 km', '▼ 34% 감소'],
+                ['평균 소요 시간', '14.2 분', '6.3 분', '▼ 56% 단축'],
+                ['고객 이탈률/피로도', '85점 (22%)', '52점 (9%)', '▼ 38% 개선']
+            ];
+            let ty = 618;
+            const colX = [30, 300, 540, 760];
+            const colW = [270, 240, 220, 210];
+            rows.forEach((row, ri) => {
+                ctx.fillStyle = ri === 0 ? (dark ? '#12233f' : '#004085') : (ri % 2 ? (dark ? '#131f38' : '#f8f9fa') : (dark ? '#0b1220' : '#ffffff'));
+                ctx.fillRect(30, ty, 940, 34);
+                ctx.strokeStyle = dark ? '#2e4468' : '#dee2e6';
+                ctx.strokeRect(30, ty, 940, 34);
+                ctx.font = ri === 0 ? 'bold 13px "Malgun Gothic"' : '13px "Malgun Gothic"';
+                ctx.fillStyle = ri === 0 ? '#ffffff' : (dark ? '#e2e8f0' : '#1e293b');
+                row.forEach((cell, ci) => ctx.fillText(cell, colX[ci] + 8, ty + 10));
+                ty += 34;
+            });
+
+            ctx.font = '11px "Malgun Gothic"';
+            ctx.fillStyle = dark ? '#9fb0c9' : '#999999';
+            ctx.fillText('교보문고 스마트매장 안내 시뮬레이터 — 자동 생성 보고서', 30, ty + 16);
+
+            const link = document.createElement('a');
+            link.download = `교보문고_${branch}_동선비교보고서_${Date.now()}.png`;
+            link.href = off.toDataURL('image/png');
+            link.click();
+        }
+
+        window.onload = function () {
+            const beforeObstacles = beforeShelves.filter(s => s.name !== 'D/E출입구 (메인 복도)');
+            const afterObstacles = afterShelves.filter(s => s.name !== 'D/E출입구 (메인 복도)');
+            const beforeGrid = buildGrid(beforeObstacles);
+            const afterGrid = buildGrid(afterObstacles);
+
+            state.cmpBefore.grid = beforeGrid;
+            state.cmpAfter.grid = afterGrid;
+
+            renderInstance('cmpBefore');
+            renderInstance('cmpAfter');
+
+            drawReportRoute('reportCanvasBefore', beforeShelves, 'before');
+            drawReportRoute('reportCanvasAfter', afterShelves, 'after');
+
+            // 이 페이지는 "동선 비교" 화면 하나만 있으므로 자동재생을 바로 시작합니다.
+            startCompareAutoPlay();
+        };
+    </script>
+</body>
+</html>
